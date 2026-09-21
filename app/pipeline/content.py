@@ -194,11 +194,18 @@ Only include the field that matches the chosen layout:
     {{items:[{{label, detail}}]}} (3–4 items). Use for claim/evidence,
     components, trade-offs, checklist facets — denser than bullets, still
     scannable. Prefer this when the source has several parallel facts.
+  * "bento"     -> 3–5 tiles (first tile is the hero). Geometry change, not a
+    color swap. Fill "bullets" with short tile labels.
+  * "cards"     -> 2–5 stacked cards from "bullets" (offset deck, not a list).
+  * "rail"      -> 3–5 numbered stations on a path from "bullets" or "steps".
+  * "spotlight" -> one lead line + supporting chips. Use for a single insight
+    with 1–3 supporting facts in "bullets".
   * "diagram"   -> process map; set show_flowchart true + active_node.
   * "cover"     -> ONLY when instructed for research papers/books (first page).
 SMART FIT: match slide LAYOUT to content — numbers→hook/stat/bars; systems→hub/flow;
-trade-offs→compare/matrix; how-to→steps; code→panel; insight→quote; cleanup→
-transform. Rotate through the menu so a 10–20 slide lesson uses many varieties.
+trade-offs→compare/matrix; how-to→steps/rail; tiles→bento/cards; insight→quote/spotlight;
+code→panel; cleanup→transform. Rotate through the menu so a 10–20 slide lesson uses
+many GEOMETRIES (bento vs rail vs split vs stack) — not the same cards recolored.
 Do NOT invent or swap the presentation visual style, color theme, or voice —
 those are locked by Studio / the user.
 
@@ -700,7 +707,7 @@ def _coerce_slides(data: dict) -> dict:
             continue
         narration = _delesson(str(s.get("narration") or "").strip())
         heading = _delesson(str(s.get("heading") or "").strip()[:120])
-        bullets = [_delesson(str(b).strip()[:140]) for b in (s.get("bullets") or []) if str(b).strip()][:5]
+        bullets = [_delesson(str(b).strip()[:140]) for b in (s.get("bullets") or []) if str(b).strip()][:6]
         show_fc = bool(s.get("show_flowchart")) and bool(flowchart)
         active = s.get("active_node")
         active = str(active).strip() if active else None
@@ -880,7 +887,14 @@ def _coerce_slides(data: dict) -> dict:
         valid_layouts = {
             "bullets", "stat", "compare", "steps", "quote", "diagram",
             "hub", "panel", "transform", "flow", "hook", "bars", "matrix", "cover",
+            "bento", "cards", "rail", "spotlight", "quad", "chips", "numbered", "split",
         }
+        variety = ""
+        if layout in {
+            "bento", "cards", "rail", "spotlight", "quad", "chips", "numbered", "split",
+        }:
+            variety = layout
+            layout = "bullets"
         if layout not in valid_layouts:
             if hook:
                 layout = "hook"
@@ -952,6 +966,7 @@ def _coerce_slides(data: dict) -> dict:
             "bars": bars,
             "matrix": matrix,
             "equations": equations,
+            "variety": variety,
             "image": str(s.get("image") or "") or None,
             "image_caption": _delesson(str(s.get("image_caption") or "")[:160]),
         })
@@ -1781,7 +1796,179 @@ def _render_matrix(matrix: dict) -> str:
     return f'<div class="matrix reveal" style="--cols:{cols}">{"".join(cards)}</div>'
 
 
-def _slide_density(s: dict, layout: str) -> str:
+# Compose mode → content geometries (not palettes). Rotate so consecutive
+# bullet slides do not look like the same card restyled.
+_COMPOSE_VARIETIES: dict[str, tuple[str, ...]] = {
+    "bento": ("bento", "quad", "cards"),
+    "mosaic": ("quad", "bento", "chips"),
+    "kpi": ("numbered", "quad", "spotlight"),
+    "rail": ("rail", "numbered", "split"),
+    "subway": ("rail", "numbered", "chips"),
+    "chapters": ("numbered", "rail", "split"),
+    "funnel": ("rail", "numbered", "spotlight"),
+    "cycle": ("rail", "quad", "chips"),
+    "split": ("split", "cards", "spotlight"),
+    "dual": ("split", "quad", "cards"),
+    "quote": ("spotlight", "cards", "split"),
+    "magazine": ("spotlight", "split", "cards"),
+    "mega_type": ("spotlight", "chips", "cards"),
+    "kinetic_center": ("spotlight", "chips", "numbered"),
+    "caption": ("spotlight", "chips", "cards"),
+    "poster": ("spotlight", "cards", "numbered"),
+    "kanban": ("split", "quad", "chips"),
+    "cards_stack": ("cards", "bento", "numbered"),
+    "polaroid": ("cards", "quad", "spotlight"),
+    "chalkboard": ("numbered", "cards", "split"),
+    "swiss": ("numbered", "split", "quad"),
+    "broadcast": ("chips", "spotlight", "rail"),
+    "ticker": ("chips", "rail", "spotlight"),
+    "glass": ("cards", "split", "bento"),
+    "letterbox": ("spotlight", "cards", "split"),
+    "quad": ("quad", "bento", "split"),
+    "stack": ("cards", "numbered", "split", "bento", "chips", "rail"),
+}
+_ALL_VARIETIES = (
+    "bento", "quad", "rail", "split", "spotlight", "cards", "numbered", "chips", "grid",
+)
+
+
+def _variety_fits(name: str, n: int, vertical: bool) -> bool:
+    if n <= 0:
+        return False
+    if name == "spotlight":
+        return n <= 4
+    if name == "split":
+        return n >= 2
+    if name == "bento":
+        return 3 <= n <= 6
+    if name == "quad":
+        return n >= 3
+    if name == "rail":
+        return 3 <= n <= 6
+    if name == "cards":
+        return 2 <= n <= 5
+    if name == "numbered":
+        return 2 <= n <= 6
+    if name == "chips":
+        return n >= 2
+    if name == "grid":
+        return n >= 3 and not vertical
+    return True
+
+
+def pick_bullet_variety(
+    compose: str,
+    idx: int,
+    n: int,
+    *,
+    is_hero: bool = False,
+    is_recap: bool = False,
+    vertical: bool = False,
+    forced: str = "",
+    avoid: str = "",
+) -> str:
+    """Choose a content geometry for a bullets slide."""
+    if forced and _variety_fits(forced, n, vertical):
+        return forced
+    if is_recap:
+        return "numbered" if n >= 2 else "chips"
+    if is_hero:
+        return "spotlight" if n <= 3 else "cards"
+    pool = list(_COMPOSE_VARIETIES.get(compose, _COMPOSE_VARIETIES["stack"]))
+    start = idx % max(1, len(pool))
+    ordered = pool[start:] + pool[:start] + list(_ALL_VARIETIES)
+    for name in ordered:
+        if name == avoid:
+            continue
+        if _variety_fits(name, n, vertical):
+            return name
+    return "grid" if n >= 3 and not vertical else "cards"
+
+
+def _render_bullet_variety(
+    items: list[str],
+    variety: str,
+    *,
+    recap: bool = False,
+) -> str:
+    """HTML for a bullets slide that is not a flat same-y card stack."""
+    items = [str(x).strip() for x in (items or []) if str(x).strip()]
+    if not items:
+        return ""
+
+    def _txt(t: str) -> str:
+        return html.escape(t)
+
+    def _chip_row(rest: list[str], start: int = 1) -> str:
+        if not rest:
+            return ""
+        chips = "".join(
+            f'<li class="v-chip" style="--i:{start + i}">{_txt(t)}</li>'
+            for i, t in enumerate(rest)
+        )
+        return f'<ul class="v-chips">{chips}</ul>'
+
+    mark = "v-check" if recap else "v-idx"
+    if variety == "spotlight":
+        lead, rest = items[0], items[1:]
+        return (
+            '<div class="v-spot reveal">'
+            f'<p class="v-lead" style="--i:1">{_txt(lead)}</p>'
+            f'{_chip_row(rest, 2)}'
+            "</div>"
+        )
+    if variety == "split":
+        mid = max(1, (len(items) + 1) // 2)
+        left, right = items[:mid], items[mid:]
+
+        def _col(col, offset):
+            lis = "".join(
+                f'<li style="--i:{offset + i}"><span class="{mark}">{offset + i:02d}</span>'
+                f'<span class="v-t">{_txt(t)}</span></li>'
+                for i, t in enumerate(col)
+            )
+            return f'<ul class="v-col">{lis}</ul>'
+
+        return f'<div class="v-split reveal">{_col(left, 1)}{_col(right, 1 + len(left))}</div>'
+    if variety == "rail":
+        head, tail = items[:5], items[5:]
+        lis = "".join(
+            f'<li style="--i:{i + 1}">'
+            f'<span class="v-num">{i + 1}</span>'
+            f'<span class="v-t">{_txt(t)}</span></li>'
+            for i, t in enumerate(head)
+        )
+        return f'<ol class="v-rail reveal">{lis}</ol>{_chip_row(tail, 6)}'
+    if variety == "numbered":
+        lis = "".join(
+            f'<li style="--i:{i + 1}">'
+            f'<span class="v-num">{i + 1:02d}</span>'
+            f'<span class="v-t">{_txt(t)}</span></li>'
+            for i, t in enumerate(items[:6])
+        )
+        return f'<ol class="v-agenda reveal">{lis}</ol>'
+    if variety == "cards":
+        cards = "".join(
+            f'<article class="v-card" style="--i:{i + 1};--tilt:{(i % 3 - 1) * 1.2:.1f}deg">'
+            f'<span class="{mark}">{i + 1:02d}</span>'
+            f'<span class="v-t">{_txt(t)}</span></article>'
+            for i, t in enumerate(items[:5])
+        )
+        return f'<div class="v-cards reveal">{cards}</div>{_chip_row(items[5:], 6)}'
+    if variety in ("bento", "quad"):
+        cap = 4 if variety == "quad" else 5
+        head, tail = items[:cap], items[cap:]
+        tiles = "".join(
+            f'<div class="v-tile" style="--i:{i + 1}">'
+            f'<span class="v-k">{i + 1:02d}</span>'
+            f'<span class="v-t">{_txt(t)}</span></div>'
+            for i, t in enumerate(head)
+        )
+        cls = "v-bento v-quad reveal" if variety == "quad" else "v-bento reveal"
+        return f'<div class="{cls}">{tiles}</div>{_chip_row(tail, cap + 1)}'
+    if variety == "chips":
+        return f'<div class="v-spot reveal">{_chip_row(items, 1)}</div>'
+    return ""
     """Return low|med|high so CSS can shrink type for packed frames."""
     if not isinstance(s, dict):
         return "low"
@@ -1991,6 +2178,42 @@ def _render_bars(bars: dict) -> str:
     )
 
 
+def _slide_density(s: dict, layout: str) -> str:
+    """Return low|med|high so CSS can shrink type for packed frames."""
+    if not isinstance(s, dict):
+        return "low"
+    n = len(s.get("bullets") or []) + len(s.get("steps") or [])
+    if layout == "hub":
+        hub = s.get("hub")
+        nodes = hub.get("nodes") if isinstance(hub, dict) else []
+        n = len(nodes or [])
+    elif layout == "compare":
+        cmp = s.get("compare") if isinstance(s.get("compare"), dict) else {}
+        n = len(cmp.get("left") or []) + len(cmp.get("right") or [])
+    elif layout == "matrix":
+        matrix = s.get("matrix")
+        items = matrix.get("items") if isinstance(matrix, dict) else []
+        n = len(items or [])
+    elif layout == "flow":
+        flow = s.get("flow")
+        steps = flow.get("steps") if isinstance(flow, dict) else []
+        n = len(steps or [])
+    elif layout == "bars":
+        bars = s.get("bars")
+        items = bars.get("items") if isinstance(bars, dict) else []
+        n = len(items or [])
+    elif layout == "panel":
+        panel = s.get("panel")
+        lines = panel.get("lines") if isinstance(panel, dict) else []
+        n = len(lines or [])
+    eqs = len(s.get("equations") or [])
+    if n >= 6 or (n >= 4 and eqs) or (layout == "matrix" and n >= 4):
+        return "high"
+    if n >= 4 or eqs:
+        return "med"
+    return "low"
+
+
 def _layout_body(
     *, layout: str, vertical: bool, is_hero: bool,
     bullets_html: str, bullets_block: str, fc_block: str, img_block: str,
@@ -2150,6 +2373,7 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
     palette_count = len(palettes)
 
     slide_blocks = []
+    last_variety = ""
     for idx, s in enumerate(slides):
         if not isinstance(s, dict):
             s = {"heading": str(s)[:80] if s else "", "narration": str(s) if s else ""}
@@ -2255,26 +2479,71 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
             )
 
         matrix = s.get("matrix")
-        body_cls, body_inner = _layout_body(
-            layout=layout,
-            vertical=vertical,
-            is_hero=is_hero,
-            bullets_html=bullets_html,
-            bullets_block=bullets_block,
-            fc_block=fc_block,
-            img_block=img_block,
-            stats=stats,
-            compare=compare,
-            steps=steps,
-            quote=quote,
-            hub=hub,
-            panel=panel,
-            transform=transform,
-            flow=flow,
-            hook=hook,
-            bars=bars,
-            matrix=matrix,
-        )
+        compose = str(style_spec.get("layout_mode") or "stack")
+        variety = ""
+        if layout in ("bullets", "cover") or (
+            layout not in {
+                "hook", "bars", "stat", "compare", "steps", "quote",
+                "hub", "panel", "transform", "flow", "diagram", "matrix",
+            }
+        ):
+            n_items = len(raw_bullets)
+            variety = pick_bullet_variety(
+                compose,
+                idx,
+                n_items,
+                is_hero=is_hero,
+                is_recap=is_recap,
+                vertical=vertical,
+                forced=str(s.get("variety") or ""),
+                avoid=last_variety,
+            )
+            last_variety = variety
+            rich_html = _render_bullet_variety(raw_bullets, variety, recap=is_recap)
+            if rich_html and not img_block:
+                body_cls, body_inner = "body one", rich_html
+            else:
+                body_cls, body_inner = _layout_body(
+                    layout=layout,
+                    vertical=vertical,
+                    is_hero=is_hero,
+                    bullets_html=bullets_html,
+                    bullets_block=bullets_block,
+                    fc_block=fc_block,
+                    img_block=img_block,
+                    stats=stats,
+                    compare=compare,
+                    steps=steps,
+                    quote=quote,
+                    hub=hub,
+                    panel=panel,
+                    transform=transform,
+                    flow=flow,
+                    hook=hook,
+                    bars=bars,
+                    matrix=matrix,
+                )
+        else:
+            body_cls, body_inner = _layout_body(
+                layout=layout,
+                vertical=vertical,
+                is_hero=is_hero,
+                bullets_html=bullets_html,
+                bullets_block=bullets_block,
+                fc_block=fc_block,
+                img_block=img_block,
+                stats=stats,
+                compare=compare,
+                steps=steps,
+                quote=quote,
+                hub=hub,
+                panel=panel,
+                transform=transform,
+                flow=flow,
+                hook=hook,
+                bars=bars,
+                matrix=matrix,
+            )
 
         # Surface key formulas from the source as display equations, appended to
         # whatever layout was chosen so math shows alongside bullets/steps/etc.
@@ -2299,7 +2568,7 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
         # in the final YouTube video.
         slide_blocks.append(
             f'<section class="slide" data-index="{idx}" data-theme="{theme}" '
-            f'data-layout="{html.escape(layout)}" data-density="{density}">'
+            f'data-layout="{html.escape(layout)}" data-variety="{html.escape(variety)}" data-density="{density}">'
             f'<div class="bg" aria-hidden="true"></div>'
             f'<div class="frame-orn" aria-hidden="true"></div>'
             f'<div class="stage-wrap">'
@@ -2770,6 +3039,89 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
   .slide[data-density="high"] .mx-card {{ min-height:0; padding:14px 16px; }}
   .bullets.compact li {{ padding:14px 16px; }}
   .bullets.compact .b-text {{ font-size:22px; line-height:1.38; }}
+
+  /* ---- Content varieties (geometry, not palette) ---------------------- */
+  .v-bento, .v-split, .v-rail, .v-agenda, .v-cards, .v-spot {{
+    width:100%; min-width:0; min-height:0; max-height:100%; overflow:hidden;
+  }}
+  .v-t {{
+    display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical;
+    overflow:hidden; overflow-wrap:anywhere; word-break:break-word; min-width:0;
+    font-weight:600; line-height:1.35; color:var(--ink);
+  }}
+  .v-bento {{
+    display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);
+    grid-auto-rows:minmax(0,1fr); gap:14px; align-items:stretch;
+  }}
+  .v-bento .v-tile:first-child {{ grid-row:span 2; }}
+  .v-bento.v-quad {{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); }}
+  .v-bento.v-quad .v-tile:first-child {{ grid-row:auto; }}
+  body.vertical .v-bento {{ grid-template-columns:1fr; }}
+  body.vertical .v-bento .v-tile:first-child {{ grid-row:auto; }}
+  .v-tile {{
+    display:flex; flex-direction:column; justify-content:flex-end; gap:10px;
+    min-width:0; min-height:0; padding:18px 20px;
+    background:color-mix(in srgb, var(--panel) calc(var(--panel-alpha,1) * 100%), transparent);
+    border:var(--card-border,1px) solid var(--line); border-radius:var(--card-radius,16px);
+    box-shadow:var(--card-shadow,0 12px 32px rgba(0,0,0,.28));
+  }}
+  .v-tile:first-child .v-t {{ font-size:clamp(22px, 2.6vw, 32px); -webkit-line-clamp:6; }}
+  .v-k, .v-num, .v-idx {{
+    font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--a);
+    font-variant-numeric:tabular-nums;
+  }}
+  .v-split {{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; }}
+  body.vertical .v-split {{ grid-template-columns:1fr; }}
+  .v-col {{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; min-width:0; }}
+  .v-col li, .v-agenda li {{
+    display:flex; align-items:flex-start; gap:12px; padding:14px 16px; min-width:0;
+    background:color-mix(in srgb, var(--panel) calc(var(--panel-alpha,1) * 100%), transparent);
+    border:var(--card-border,1px) solid var(--line); border-radius:var(--card-radius,12px);
+  }}
+  .v-rail {{
+    list-style:none; margin:0; padding:0; display:flex; gap:12px; flex-wrap:nowrap;
+    width:100%; overflow:hidden;
+  }}
+  .v-rail li {{
+    flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:10px;
+    padding:16px 14px; text-align:left;
+    background:color-mix(in srgb, var(--panel) calc(var(--panel-alpha,1) * 100%), transparent);
+    border:var(--card-border,1px) solid var(--line); border-radius:var(--card-radius,14px);
+    border-top:3px solid var(--a);
+  }}
+  body.vertical .v-rail {{ flex-direction:column; }}
+  .v-num {{
+    display:grid; place-items:center; width:36px; height:36px; flex:none;
+    border-radius:10px; background:color-mix(in srgb, var(--a) 16%, transparent);
+    color:var(--a); font-size:15px;
+  }}
+  .v-rail .v-num {{ width:28px; height:28px; font-size:13px; border-radius:999px; }}
+  .v-agenda {{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }}
+  .v-cards {{ display:flex; flex-direction:column; gap:12px; width:min(720px,100%); }}
+  .v-card {{
+    display:flex; align-items:flex-start; gap:14px; padding:16px 18px; min-width:0;
+    background:color-mix(in srgb, var(--panel) calc(var(--panel-alpha,1) * 100%), transparent);
+    border:var(--card-border,1px) solid var(--line); border-radius:var(--card-radius,16px);
+    box-shadow:var(--card-shadow,0 14px 36px rgba(0,0,0,.3));
+    transform:rotate(var(--tilt,0deg));
+  }}
+  .v-card:nth-child(even) {{ margin-left:22px; }}
+  body.vertical .v-card:nth-child(even) {{ margin-left:0; }}
+  .v-spot {{ display:flex; flex-direction:column; gap:18px; width:100%; }}
+  .v-lead {{
+    margin:0; font-size:clamp(26px, 3.4vw, 44px); font-weight:750; line-height:1.2;
+    max-width:min(100%, 22ch); overflow-wrap:anywhere;
+  }}
+  .v-chips {{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:10px; }}
+  .v-chip {{
+    padding:10px 16px; border-radius:999px; font-weight:650; font-size:16px;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    background:color-mix(in srgb, var(--a) 12%, var(--panel));
+    border:1px solid color-mix(in srgb, var(--a) 35%, var(--line)); color:var(--ink);
+  }}
+  .slide[data-density="high"] .v-t {{ -webkit-line-clamp:3; font-size:16px; }}
+  .slide[data-density="high"] .v-lead {{ font-size:clamp(22px, 2.8vw, 34px); }}
+  .slide[data-density="high"] .v-tile, .slide[data-density="high"] .v-card {{ padding:12px 14px; }}
   body.vertical .stage-wrap {{ padding:64px 40px 140px; }}
   .slide[data-density="high"] .stage-wrap {{ padding-top:36px; padding-bottom:96px; }}
 
@@ -2994,7 +3346,8 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
      to the rest, so the viewer's eye is guided to exactly what's being said.
      Applied to bullets, steps, stat cards and compare columns. */
   .sync .bullets li, .sync .steps .step, .sync .stat-card, .sync .cmp-col, .sync .flow-node,
-  .sync .panel-body .pl, .sync .tr-chip, .sync .tr-node-label, .sync .bar-row, .sync .mx-card {{
+  .sync .panel-body .pl, .sync .tr-chip, .sync .tr-node-label, .sync .bar-row, .sync .mx-card,
+  .sync .v-tile, .sync .v-card, .sync .v-rail li, .sync .v-agenda li, .sync .v-col li, .sync .v-chip {{
     transition:transform .35s cubic-bezier(0.16,1,0.3,1), opacity .35s ease,
       filter .35s ease, box-shadow .35s ease, border-color .35s ease;
   }}
@@ -3012,6 +3365,12 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
     transform:scale(1.2);
   }}
   .bullets li.is-active .b-text {{ color:var(--ink); font-weight:600; }}
+  .v-tile.is-active, .v-card.is-active, .v-rail li.is-active, .v-agenda li.is-active, .v-col li.is-active {{
+    transform:translateY(-4px) scale(1.02);
+    border-color:color-mix(in srgb, var(--a) 55%, var(--line));
+    box-shadow:0 12px 28px color-mix(in srgb, var(--a) 22%, transparent);
+  }}
+  .v-chip.is-active {{ background:color-mix(in srgb, var(--a) 28%, var(--panel)); }}
   .steps .step.is-active, .stat-card.is-active, .cmp-col.is-active, .flow-node.is-active,
   .tr-chip.is-active, .mx-card.is-active {{
     border-color:color-mix(in srgb, var(--a) 70%, transparent);
@@ -3076,6 +3435,13 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
   body.capture .slide.active .diagram,
   body.capture .slide.active .diagram svg,
   body.capture .slide.active .bullets li,
+  body.capture .slide.active .v-tile,
+  body.capture .slide.active .v-card,
+  body.capture .slide.active .v-rail li,
+  body.capture .slide.active .v-agenda li,
+  body.capture .slide.active .v-col li,
+  body.capture .slide.active .v-chip,
+  body.capture .slide.active .v-lead,
   body.capture .slide.active .b-mark,
   body.capture .slide.active .stat-card,
   body.capture .slide.active .steps .step,
@@ -3783,6 +4149,8 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
       {{ sel: '.bar-row', from: 0.14, dur: 0.52, kind: 'bar', stagger: 0.10 }},
       {{ sel: '.device, .paper, .diagram', from: 0.14, dur: 0.52, kind: 'pop' }},
       {{ sel: '.bullets li', from: 0.16, dur: 0.42, kind: 'card', stagger: 0.07 }},
+      {{ sel: '.v-tile, .v-card, .v-rail li, .v-agenda li, .v-col li, .v-chip', from: 0.16, dur: 0.42, kind: 'card', stagger: 0.07 }},
+      {{ sel: '.v-lead', from: 0.10, dur: 0.48, kind: 'riseBlur' }},
       {{ sel: '.stat-card', from: 0.14, dur: 0.45, kind: 'pop', stagger: 0.08 }},
       {{ sel: '.steps .step', from: 0.16, dur: 0.42, kind: 'card', stagger: 0.07 }},
       {{ sel: '.cmp-col', from: 0.12, dur: 0.45, kind: 'rise', stagger: 0.10 }},
@@ -3816,7 +4184,7 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
     slide.__timeline = targets;
     // Focusable items get highlighted one-by-one in sync with the narration.
     slide.__focus = [...slide.querySelectorAll(
-      '.bullets li, .steps .step, .stat-card, .cmp-col, .hub-node, .panel-body .pl, .flow-node, .tr-chip, .bar-row, .mx-card'
+      '.bullets li, .steps .step, .stat-card, .cmp-col, .hub-node, .panel-body .pl, .flow-node, .tr-chip, .bar-row, .mx-card, .v-tile, .v-card, .v-rail li, .v-agenda li, .v-col li, .v-chip'
     )];
     // Weight each item's dwell time by how much text it shows, so a long bullet
     // stays highlighted longer than a short one — a much closer match to the

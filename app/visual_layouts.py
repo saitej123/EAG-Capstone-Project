@@ -914,6 +914,11 @@ COMPOSE_SLIDESHOW_CSS = r"""
   body[data-compose="bento"] .matrix { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
   body[data-compose="bento"] .mx-card:nth-child(1) { grid-row: span 2; min-height: 0; }
   body[data-compose="bento"] .slide h2 { max-width: 16ch; }
+  body[data-compose="bento"] .v-bento .v-tile:nth-child(1) { min-height: min(240px, 32vh); }
+  body[data-compose="kpi"] .v-agenda .v-num { font-size: 18px; width: 44px; height: 44px; }
+  body[data-compose="rail"] .v-rail li { border-radius: 999px; text-align: center; align-items: center; }
+  body[data-compose="kinetic_center"] .v-lead { margin-inline: auto; text-align: center; }
+  body[data-compose="split"] .v-split { gap: 28px; }
 
   body[data-compose="rail"] .flow-horizontal,
   body[data-compose="rail"] .tut-steps {
