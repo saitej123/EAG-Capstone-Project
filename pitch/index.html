@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Session 20 · Capstone pitch — Multimodal Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    }
+  </style>
+  <style>
+    :root,
+    [data-theme="light"] {
+      --color-base-100: oklch(100% 0 0);
+      --color-base-200: oklch(98.4% 0.003 247);
+      --color-base-300: oklch(92.8% 0.006 255);
+      --color-base-content: oklch(21% 0.006 285);
+      --color-primary: oklch(21% 0.006 285);
+      --color-primary-content: oklch(98% 0 0);
+      --color-neutral: oklch(27% 0.01 260);
+      --color-neutral-content: oklch(98% 0 0);
+      --radius-box: 0.5rem;
+      --radius-field: 0.375rem;
+      --radius-selector: 0.25rem;
+    }
+    html, body { height: 100%; }
+    body { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    .deck { height: 100dvh; overflow: hidden; }
+    .slide {
+      display: none;
+      height: calc(100dvh - 3.25rem);
+      overflow: hidden;
+    }
+    .slide.is-active { display: flex; }
+    .slide-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      width: 100%;
+      max-width: 72rem;
+      margin-inline: auto;
+      padding: 0.65rem 1rem 0.5rem;
+      min-height: 0;
+    }
+    .card-body { padding: 0.7rem 0.85rem !important; }
+    .stat { padding-inline: 0.85rem !important; padding-block: 0.45rem !important; }
+    .table :where(th, td) { padding-block: 0.28rem !important; }
+    @media print {
+      .deck { height: auto; overflow: visible; }
+      .no-print { display: none !important; }
+      .slide { display: flex !important; height: auto; overflow: visible; break-after: page; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck bg-base-200">
+    <header class="navbar min-h-12 border-b border-base-300 bg-base-100 px-3 sm:px-5 no-print">
+      <div class="navbar-start gap-2">
+        <span class="flex size-7 items-center justify-center rounded-field border border-base-300 text-xs font-semibold">M</span>
+        <div class="leading-tight">
+          <p class="text-sm font-semibold">Multimodal Studio</p>
+          <p class="text-[11px] text-base-content/50">Session 20 · Capstone pitch</p>
+        </div>
+      </div>
+      <div class="navbar-center hidden sm:flex">
+        <div class="flex items-center gap-1" role="tablist" aria-label="Slides">
+          <button type="button" class="btn btn-xs tab-dot" data-go="0" aria-current="page">1 Cover</button>
+          <button type="button" class="btn btn-xs btn-ghost tab-dot" data-go="1">2 Problem &amp; flow</button>
+          <button type="button" class="btn btn-xs btn-ghost tab-dot" data-go="2">3 Harness · 4 weeks</button>
+        </div>
+      </div>
+      <div class="navbar-end gap-1.5">
+        <span class="hidden text-[11px] text-base-content/50 md:inline">
+          <kbd class="kbd kbd-xs">←</kbd>
+          <kbd class="kbd kbd-xs">→</kbd>
+        </span>
+        <button type="button" class="btn btn-xs btn-ghost" id="prev-btn">Previous</button>
+        <button type="button" class="btn btn-xs" id="next-btn">Next</button>
+      </div>
+    </header>
+
+    <!-- PAGE 1 -->
+    <section class="slide is-active" id="slide-0" aria-label="Cover and flowchart">
+      <div class="slide-inner">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="badge badge-xs badge-outline">Session 20</span>
+          <span class="badge badge-xs">Capstone pitch</span>
+          <span class="badge badge-xs badge-outline">3 slides</span>
+        </div>
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
+          How Multimodal Studio turns documents into narrated video
+        </h1>
+        <p class="max-w-3xl text-sm text-base-content/60">
+          Session 20 capstone: FastAPI + Studio SPA. Upload a paper or queue a topic.
+          Seven stages compile the video. LLM calls today are <span class="font-medium text-base-content">one-shot</span> inside extract / generate / topic brief / metadata — not a tool harness. Four weeks to add that loop on Studio only.
+        </p>
+
+        <div class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-none sm:stats-horizontal">
+          <div class="stat">
+            <div class="stat-title text-xs">Inputs</div>
+            <div class="stat-value text-lg">Doc or topic</div>
+            <div class="stat-desc">PDF, Word, PPT, text, images, cron</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title text-xs">Engine</div>
+            <div class="stat-value text-lg">7 stages</div>
+            <div class="stat-desc">Re-run any stage after an edit</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title text-xs">Output</div>
+            <div class="stat-value text-lg">Synced MP4</div>
+            <div class="stat-desc">YouTube, Shorts, Reels, TikTok, Square</div>
+          </div>
+        </div>
+
+        <div class="card card-xs card-border bg-base-100">
+          <div class="card-body gap-2">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 class="card-title text-sm">System flowchart</h2>
+              <p class="text-xs text-base-content/50">Two entries. One orchestrator. Missing tools skip a stage.</p>
+            </div>
+            <div class="grid gap-2 md:grid-cols-2">
+              <div class="rounded-box border border-base-300 bg-base-200 px-3 py-2">
+                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Entry A · Studio</p>
+                <p class="text-sm font-medium">Upload a document</p>
+                <p class="text-xs text-base-content/60">PDF, Word, PPT, Markdown, images. Lock style/theme or leave Auto.</p>
+              </div>
+              <div class="rounded-box border border-base-300 bg-base-200 px-3 py-2">
+                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Entry B · Admin cron</p>
+                <p class="text-sm font-medium">Queue a prepared topic</p>
+                <p class="text-xs text-base-content/60">HN / newsletters / labs → SQLite brief → same pipeline + Auto style.</p>
+              </div>
+            </div>
+            <p class="text-center text-[10px] font-medium uppercase tracking-wide text-base-content/40">merge into one job</p>
+            <ul class="steps steps-vertical w-full lg:steps-horizontal">
+              <li class="step" data-content="1"><span class="text-xs font-semibold">Extract<span class="block font-normal text-base-content/50">VLM / text</span></span></li>
+              <li class="step" data-content="2"><span class="text-xs font-semibold">Generate<span class="block font-normal text-base-content/50">Slides + HTML</span></span></li>
+              <li class="step" data-content="3"><span class="text-xs font-semibold">Narrate<span class="block font-normal text-base-content/50">Per-slide VO</span></span></li>
+              <li class="step" data-content="4"><span class="text-xs font-semibold">Capture<span class="block font-normal text-base-content/50">Playwright</span></span></li>
+              <li class="step" data-content="5"><span class="text-xs font-semibold">Merge<span class="block font-normal text-base-content/50">FFmpeg MP4</span></span></li>
+              <li class="step" data-content="6"><span class="text-xs font-semibold">Meta<span class="block font-normal text-base-content/50">Title + thumb</span></span></li>
+              <li class="step" data-content="7"><span class="text-xs font-semibold">Publish<span class="block font-normal text-base-content/50">YouTube</span></span></li>
+            </ul>
+            <div class="grid gap-2 sm:grid-cols-3">
+              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">LLM today.</span> One-shot in extract (VLM), generate (slides + Auto style), topic brief, publish meta.</p>
+              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">Helpers.</span> <code class="rounded-field bg-base-200 px-1">topic_research.py</code>, <code class="rounded-field bg-base-200 px-1">topic_prep.py</code>, <code class="rounded-field bg-base-200 px-1">content.py</code> — no plan/tool loop.</p>
+              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">4-week lift.</span> A Studio harness around generate + cron: plan → tools → confirm → traces.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 2 -->
+    <section class="slide" id="slide-1" aria-label="Problem and how it works">
+      <div class="slide-inner">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Session 20 · Capstone · Page 2</p>
+            <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">The problem, then the machine</h2>
+          </div>
+        </div>
+
+        <div class="grid min-h-0 flex-1 gap-2 lg:grid-cols-5">
+          <div class="card card-xs card-border bg-base-100 lg:col-span-2">
+            <div class="card-body gap-1.5">
+              <h3 class="card-title text-sm">Problem statement</h3>
+              <p class="text-xs text-base-content/70">
+                Papers and AI news already exist. A publishable explainer still needs slides, voice, timed motion, a format, and a title — every time.
+              </p>
+              <ul class="flex flex-col gap-1 text-xs text-base-content/70">
+                <li class="rounded-box bg-base-200 px-2 py-1">Manual decks drift from the source.</li>
+                <li class="rounded-box bg-base-200 px-2 py-1">Voice and picture desync on recut.</li>
+                <li class="rounded-box bg-base-200 px-2 py-1">Cron topic farming cannot sit in Premiere.</li>
+                <li class="rounded-box bg-base-200 px-2 py-1">Every video clones the last template.</li>
+              </ul>
+              <p class="text-xs text-base-content/60">
+                Capstone bet: a <span class="font-medium text-base-content">document-to-lesson compiler</span> — HTML + timed audio + browser capture — not a timeline editor.
+              </p>
+            </div>
+          </div>
+
+          <div class="card card-xs card-border bg-base-100 lg:col-span-3">
+            <div class="card-body gap-1.5">
+              <h3 class="card-title text-sm">How a job runs</h3>
+              <p class="text-xs text-base-content/60">
+                <code class="rounded-field bg-base-200 px-1 py-0.5">run_pipeline()</code> walks
+                <code class="rounded-field bg-base-200 px-1 py-0.5">STAGE_ORDER</code>.
+                Re-run one stage or from that stage onward after an edit.
+              </p>
+              <div class="overflow-x-auto">
+                <table class="table table-xs">
+                  <thead>
+                    <tr>
+                      <th>Stage</th>
+                      <th>What happens</th>
+                      <th>If missing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="font-medium">Extract</td>
+                      <td>VLM pages or plain text. Keep paper cover.</td>
+                      <td>&lt;40 words → warn, don’t fake it.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Generate</td>
+                      <td>Slide model + HTML. Auto style/theme. Topic jobs can web-brief.</td>
+                      <td>No LLM → template HTML.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Narrate</td>
+                      <td>One audio per slide. Recording beats TTS.</td>
+                      <td>No TTS → skip; merge can be silent.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Capture</td>
+                      <td>Playwright seeks HTML so highlights walk with VO.</td>
+                      <td>No Chromium / FFmpeg → skip.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Merge</td>
+                      <td>FFmpeg stitches frames + audio to 16:9 / 9:16 / 1:1.</td>
+                      <td>Far under target duration → warn.</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Meta / Pub</td>
+                      <td>Title, description, thumb. Optional YouTube.</td>
+                      <td>No API → file stays local.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-xs card-border bg-base-100">
+          <div class="card-body gap-1.5">
+            <h3 class="card-title text-sm">Where the agentic harness will sit (Studio only)</h3>
+            <p class="text-xs text-base-content/60">
+              Today those modules are <span class="font-medium text-base-content">one LLM call each</span>. The harness wraps them as tools: plan → execute (cap 4) → write traces. Mutating actions (<code class="rounded-field bg-base-200 px-1">propose_queue</code>, <code class="rounded-field bg-base-200 px-1">propose_publish</code>) wait for confirm. Human edit of extract / narration stays the Studio confirm gate.
+            </p>
+            <div class="grid gap-2 md:grid-cols-3">
+              <div class="rounded-box bg-base-200 px-2 py-1.5 text-xs text-base-content/70">
+                <p class="font-medium text-base-content">1. Generate · <code class="rounded-field bg-base-100 px-1">stage_generate</code> / <code class="rounded-field bg-base-100 px-1">content.py</code></p>
+                <p>Home of the loop. Tools: research topic, score style/theme, draft slides + HTML, check coverage vs source.</p>
+              </div>
+              <div class="rounded-box bg-base-200 px-2 py-1.5 text-xs text-base-content/70">
+                <p class="font-medium text-base-content">2. Topic + Auto look · existing helpers</p>
+                <p><code class="rounded-field bg-base-100 px-1">topic_research.py</code>, <code class="rounded-field bg-base-100 px-1">topic_prep.py</code>, <code class="rounded-field bg-base-100 px-1">apply_auto_video_style</code> — wrap as tools, stop calling them as a single shot.</p>
+              </div>
+              <div class="rounded-box bg-base-200 px-2 py-1.5 text-xs text-base-content/70">
+                <p class="font-medium text-base-content">3. Cron + publish · confirm required</p>
+                <p>Admin topic queue and <code class="rounded-field bg-base-100 px-1">publish_meta</code> / YouTube. Fetch → brief → truthfulness → propose. No start or upload without confirm.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 3 -->
+    <section class="slide" id="slide-2" aria-label="Challenges and improvements">
+      <div class="slide-inner">
+        <div>
+          <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Session 20 · Capstone · Page 3</p>
+          <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Limits — and the 4-week harness plan</h2>
+          <p class="text-xs text-base-content/60">Studio only. Add one harness around generate and cron. Narrate / capture / merge stay deterministic FFmpeg + Playwright.</p>
+        </div>
+
+        <div class="grid min-h-0 gap-2 lg:grid-cols-2">
+          <div class="card card-xs card-border bg-base-100">
+            <div class="card-body gap-1">
+              <h3 class="card-title text-sm">It cannot do</h3>
+              <ul class="flex flex-col gap-1 text-xs text-base-content/70">
+                <li><span class="font-medium text-base-content">Not an NLE / film crew.</span> HTML frames in Chromium — no B-roll, lip-sync, or grade.</li>
+                <li><span class="font-medium text-base-content">Not original research.</span> Topic briefs and slide copy can invent citations and numbers.</li>
+                <li><span class="font-medium text-base-content">Studio is not agentic yet.</span> One generate call, silent capability skips, YouTube-only publish.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card card-xs card-border bg-base-100">
+            <div class="card-body gap-1">
+              <h3 class="card-title text-sm">Hard challenges</h3>
+              <ul class="flex flex-col gap-1 text-xs text-base-content/70">
+                <li><span class="font-medium text-base-content">Silent skips.</span> Missing Playwright / FFmpeg / TTS still marks the job done.</li>
+                <li><span class="font-medium text-base-content">No tool traces.</span> Generate / research / Auto style don’t write one JSONL audit per job.</li>
+                <li><span class="font-medium text-base-content">Capture cost + duration miss.</span> Long VO × PNGs; target length is a wish.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-xs card-border bg-base-100">
+          <div class="card-body gap-2">
+            <h3 class="card-title text-sm">How it will be done in 4 weeks</h3>
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
+                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 1 · Extract</p>
+                <p class="text-xs font-medium">Shared harness module</p>
+                <p class="text-xs text-base-content/70">Add <code class="rounded-field bg-base-100 px-1">app/pipeline/agent_harness.py</code>: plan / execute / confirm / JSONL traces. Hook it only into <code class="rounded-field bg-base-100 px-1">stage_generate</code>. Pipeline DAG stays.</p>
+              </div>
+              <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
+                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 2 · Studio tools</p>
+                <p class="text-xs font-medium">Generate becomes a loop</p>
+                <p class="text-xs text-base-content/70">Tools: <code class="rounded-field bg-base-100 px-1">research_topic</code>, <code class="rounded-field bg-base-100 px-1">score_style</code>, <code class="rounded-field bg-base-100 px-1">draft_slides</code>, <code class="rounded-field bg-base-100 px-1">check_coverage</code>. Cap tool calls. Template fallback stays if Lite is down.</p>
+              </div>
+              <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
+                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 3 · Cron gate</p>
+                <p class="text-xs font-medium">Topic agent + human confirm</p>
+                <p class="text-xs text-base-content/70">Fetch → brief → truthfulness tool → <code class="rounded-field bg-base-100 px-1">propose_queue</code>. No pipeline start without confirm. Block “done” unless capture + audio actually ran.</p>
+              </div>
+              <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
+                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 4 · Eval + demo</p>
+                <p class="text-xs font-medium">Traces, goldens, Session 20</p>
+                <p class="text-xs text-base-content/70">JSONL traces per Studio job. Golden set: 5 docs + 3 topics (coverage / hallucination / tool use). Live demo: one agentic generate + one cron approve → MP4.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div role="alert" class="alert py-2">
+          <div>
+            <p class="text-sm font-medium">Session 20 capstone line</p>
+            <p class="text-xs text-base-content/70">
+              Multimodal Studio compiles a document or topic into a voiced, format-correct explainer.
+              Four weeks: a Studio-only harness on generate, cron behind confirm, traces and evals that fail loud.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const tabs = Array.from(document.querySelectorAll(".tab-dot"));
+      const prev = document.getElementById("prev-btn");
+      const next = document.getElementById("next-btn");
+      let i = 0;
+
+      function show(n) {
+        i = Math.max(0, Math.min(slides.length - 1, n));
+        slides.forEach((el, idx) => el.classList.toggle("is-active", idx === i));
+        tabs.forEach((el, idx) => {
+          el.classList.toggle("btn-ghost", idx !== i);
+          el.setAttribute("aria-current", idx === i ? "page" : "false");
+        });
+        prev.disabled = i === 0;
+        next.textContent = i === slides.length - 1 ? "Done" : "Next";
+        history.replaceState(null, "", "#" + (i + 1));
+      }
+
+      prev.addEventListener("click", () => show(i - 1));
+      next.addEventListener("click", () => {
+        if (i < slides.length - 1) show(i + 1);
+      });
+      tabs.forEach((el) => el.addEventListener("click", () => show(Number(el.dataset.go))));
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "PageDown") show(i + 1);
+        if (e.key === "ArrowLeft" || e.key === "PageUp") show(i - 1);
+      });
+
+      const fromHash = Number((location.hash || "#1").slice(1));
+      show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+    })();
+  </script>
+</body>
+</html>

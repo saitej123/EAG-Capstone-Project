@@ -1,0 +1,73 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+
+# PDF parsing
+pypdf
+
+# Office / rich document parsing (Word, PowerPoint) - optional at runtime
+python-docx
+python-pptx
+# Excel career-list bulk apply (Interview → Apply)
+openpyxl
+
+# PDF/doc page -> image rendering for VLM extraction
+PyMuPDF
+
+# LLM + Vision - optional at runtime.
+# google-genai: Google Gemini cloud API.
+# openai: OpenAI-compatible client used for local Ollama (e.g. gemma4:12b) and
+#         OpenAI / other OpenAI-compatible vendors. Switch via LLM_PROVIDER.
+google-genai
+openai
+
+# Structured logging
+loguru
+
+# Text to speech - optional at runtime
+# Kokoro (offline neural TTS) is preferred; gTTS is the lightweight fallback.
+kokoro-onnx
+soundfile
+gTTS
+
+# Supertonic 3 - optional at runtime. On-device ONNX TTS used for voice
+# cloning when a job supplies a Voice Builder voice-style JSON. Model assets
+# are downloaded from Hugging Face on first use.
+supertonic
+
+# Kyutai Pocket TTS - optional at runtime (CPU neural TTS + voice cloning).
+# https://github.com/kyutai-labs/pocket-tts — needs PyTorch 2.5+.
+pocket-tts
+
+# Headless capture - optional at runtime
+playwright
+
+# Computer-Use Agent for Interview auto-apply (optional; Python 3.12+).
+# https://cua.ai/docs/tutorials/drive-your-first-app
+# On WSL2, Auto defaults to Playwright for web forms; CUA needs a desktop session.
+cua>=0.1.6; python_version >= "3.12"
+cua-agent>=0.8.0; python_version >= "3.12"
+# Falls back to Playwright when CUA is not installed / fails.
+
+# Bundled FFmpeg binary fallback (used if ffmpeg is not on PATH)
+imageio-ffmpeg
+
+# HTTP client (API probes, webhooks)
+httpx
+
+# Topic web research ("Add topics") — DuckDuckGo search (free, no API key).
+# Optional paid fallbacks: set BRAVE_API_KEY / TAVILY_API_KEY / SERPER_API_KEY.
+ddgs>=9.0
+
+# Interview Prep semantic search (https://github.com/asg017/sqlite-vec)
+sqlite-vec
+
+# Thumbnails: Gemini Nano Banana Pro (GEMINI_API_KEY). Local image models optional later.
+
+# YouTube upload - optional at runtime
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
