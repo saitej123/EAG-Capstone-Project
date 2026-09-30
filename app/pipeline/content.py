@@ -19,6 +19,7 @@ from __future__ import annotations
 import html
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 from . import gemini_client
@@ -206,6 +207,9 @@ SMART FIT: match slide LAYOUT to content — numbers→hook/stat/bars; systems�
 trade-offs→compare/matrix; how-to→steps/rail; tiles→bento/cards; insight→quote/spotlight;
 code→panel; cleanup→transform. Rotate through the menu so a 10–20 slide lesson uses
 many GEOMETRIES (bento vs rail vs split vs stack) — not the same cards recolored.
+DATA FIT: for a "bullets" slide you may add "weights": one 0-100 importance score per
+bullet (same order). The layout engine sizes each item's area from it (bigger = more
+important) and computes a unique geometry for that slide — you never pick a template.
 Do NOT invent or swap the presentation visual style, color theme, or voice —
 those are locked by Studio / the user.
 
@@ -693,6 +697,23 @@ def _delesson(text: str) -> str:
     return re.sub(r"\s{2,}", " ", t).strip(" -:,")
 
 
+def _coerce_weights(raw, n: int) -> list[float]:
+    """Optional per-bullet importance (0-100) that sizes cells in the layout."""
+    if not isinstance(raw, list) or n <= 0:
+        return []
+    out: list[float] = []
+    for v in raw[:n]:
+        try:
+            out.append(max(0.0, min(100.0, float(v))))
+        except (TypeError, ValueError):
+            return []
+    if len(out) != n or max(out) <= 0:
+        return []
+    hi = max(out)
+    # map importance to the synthesizer's 1.0-3.0 area weight
+    return [round(1.0 + 2.0 * (v / hi), 2) for v in out]
+
+
 def _coerce_slides(data: dict) -> dict:
     """Validate/normalize the model's JSON into our slide model."""
     title = _delesson(str(data.get("title") or "Overview").strip()[:120])
@@ -888,8 +909,11 @@ def _coerce_slides(data: dict) -> dict:
             "bullets", "stat", "compare", "steps", "quote", "diagram",
             "hub", "panel", "transform", "flow", "hook", "bars", "matrix", "cover",
             "bento", "cards", "rail", "spotlight", "quad", "chips", "numbered", "split",
+            "free",
         }
         variety = ""
+        if layout == "free":
+            layout = "bullets"
         if layout in {
             "bento", "cards", "rail", "spotlight", "quad", "chips", "numbered", "split",
         }:
@@ -967,6 +991,7 @@ def _coerce_slides(data: dict) -> dict:
             "matrix": matrix,
             "equations": equations,
             "variety": variety,
+            "weights": _coerce_weights(s.get("weights"), len(bullets)),
             "image": str(s.get("image") or "") or None,
             "image_caption": _delesson(str(s.get("image_caption") or "")[:160]),
         })
@@ -1856,6 +1881,44 @@ def _variety_fits(name: str, n: int, vertical: bool) -> bool:
     return True
 
 
+def _lx_items_for(eng, layout: str, s: dict, raw_bullets: list, stats, steps, matrix, narration: str):
+    """Turn whatever structure a slide has into synthesizer items (no template)."""
+    rich = {
+        "hook", "bars", "compare", "quote", "hub", "panel", "transform", "flow", "diagram",
+    }
+    if layout == "stat" and isinstance(stats, list) and len(stats) >= 2:
+        labs, vals = [], []
+        for st in stats:
+            if not isinstance(st, dict):
+                continue
+            lab = str(st.get("label") or "").strip()
+            val = str(st.get("value") or "").strip()
+            labs.append(lab or val)
+            vals.append(val if lab else "")
+        return eng.make_items(labs, values=vals), "stats"
+    if layout == "steps" and steps:
+        return eng.make_items([str(x) for x in steps]), "steps"
+    if layout == "matrix" and isinstance(matrix, dict):
+        rows = matrix.get("items") or []
+        labs, dets = [], []
+        for r in rows:
+            if isinstance(r, dict):
+                lab = str(r.get("label") or "").strip()
+                det = str(r.get("detail") or "").strip()
+            else:
+                lab, det = str(r or "").strip(), ""
+            if not lab and det:
+                lab, det = det, ""
+            if lab:
+                labs.append(lab)
+                dets.append(det)
+        return eng.make_items(labs, details=dets), "matrix"
+    if layout in rich or layout in ("stat", "steps", "matrix"):
+        return [], ""
+    texts = [str(b) for b in raw_bullets] or eng.derive_items(narration)
+    return eng.make_items(texts, weights=s.get("weights")), "bullets"
+
+
 def pick_bullet_variety(
     compose: str,
     idx: int,
@@ -2372,6 +2435,26 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
     # Theme palettes rotate per slide so a long lecture stays visually fresh.
     palette_count = len(palettes)
 
+    # Template-free layout synthesizer: per-template fingerprint + per-deck
+    # uniqueness registry (no two slides share a geometry signature).
+    from .. import layout_engine as lx_engine
+    from ..video_options import VIDEO_STYLES as _ALL_STYLES
+
+    _style_key = str(style_spec.get("key") or "hybrid")
+    lx_profile = lx_engine.template_profiles(list(_ALL_STYLES)).get(_style_key) or {
+        "families": lx_engine.FAMILIES, "motif": "none", "htype": "plain", "tempo": 1.0,
+    }
+    lx_used: Counter = Counter()
+    lx_sigs: set[str] = set()
+    lx_last = ""
+    if spec["orientation"] == "vertical":
+        lx_box = (min(float(spec["width"]) - 320, 760.0), 1180.0)
+    elif spec["orientation"] == "square":
+        lx_box = (min(float(spec["width"]) - 320, 760.0), 520.0)
+    else:
+        lx_box = (float(spec["width"]) - 340, 590.0)
+    lx_seed_base = f"{model.get('title', '')}|{_style_key}"
+
     slide_blocks = []
     last_variety = ""
     for idx, s in enumerate(slides):
@@ -2481,7 +2564,31 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
         matrix = s.get("matrix")
         compose = str(style_spec.get("layout_mode") or "stack")
         variety = ""
-        if layout in ("bullets", "cover") or (
+        lx_res = None
+        if not img_block:
+            lx_items, lx_kind = _lx_items_for(
+                lx_engine, layout, s, raw_bullets, stats, steps, matrix, narration_raw,
+            )
+            if lx_items:
+                lx_res = lx_engine.synthesize(
+                    lx_items,
+                    seed=f"{lx_seed_base}|{idx}|{s.get('heading', '')}",
+                    vertical=vertical,
+                    box=lx_box,
+                    family_order=tuple(lx_profile["families"]),
+                    used=lx_used,
+                    sigs=lx_sigs,
+                    last_family=lx_last,
+                    kind=lx_kind,
+                    recap=is_recap,
+                    tempo=float(lx_profile["tempo"]),
+                    forced=str(s.get("family") or ""),
+                )
+        if lx_res:
+            lx_last = lx_res["family"]
+            variety = f"lx-{lx_last}"
+            body_cls, body_inner = "body one lx-body", lx_res["html"]
+        elif layout in ("bullets", "cover") or (
             layout not in {
                 "hook", "bars", "stat", "compare", "steps", "quote",
                 "hub", "panel", "transform", "flow", "diagram", "matrix",
@@ -2571,6 +2678,7 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
             f'data-layout="{html.escape(layout)}" data-variety="{html.escape(variety)}" data-density="{density}">'
             f'<div class="bg" aria-hidden="true"></div>'
             f'<div class="frame-orn" aria-hidden="true"></div>'
+            f'{lx_engine.motif_html(f"{lx_seed_base}|{idx}", lx_profile["motif"])}'
             f'<div class="stage-wrap">'
             f'<div class="{scene_cls}">'
             f'<div class="kicker reveal" data-anim-from="0.02" data-anim-dur="0.35">'
@@ -2628,6 +2736,10 @@ def render_slideshow_html(model: dict, options: dict | None = None) -> str:
         align=html.escape(str(stok.get("chrome_align") or "left")),
         kicker=html.escape(str(stok.get("chrome_kicker") or "left")),
         orn=html.escape(str(stok.get("chrome_orn") or "none")),
+        motif=html.escape(str(lx_profile["motif"])),
+        htype=html.escape(str(lx_profile["htype"])),
+        lx_css=lx_engine.LX_CSS,
+        lx_js=lx_engine.LX_JS,
         compose_css=slideshow_compose_css() + "\n" + generated_compose_css(VIDEO_STYLES) + "\n" + motion_slideshow_css(),
         aspect_label=html.escape(spec["aspect_ratio"]),
         platform_label=html.escape(spec["label"]),
@@ -3468,6 +3580,9 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
   body.capture .slide.active .hook-label,
   body.capture .slide.active .hook-punch,
   body.capture .slide.active .bars-title,
+  body.capture .slide.active .lx-c,
+  body.capture .slide.active .lx-dot,
+  body.capture .slide.active .lx-line path {{ animation:none !important; opacity:0; }}
   body.capture .slide.active .bar-row {{ animation:none !important; opacity:0; }}
   body.capture .slide.active .bar-fill {{ animation:none !important; width:0; }}
   /* Captions / ambient BG must NOT use delayed wall-clock CSS during capture —
@@ -3994,10 +4109,11 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
   body[data-style="stack_cards"] .mx-label {{ font-size:22px; }}
 
   {compose_css}
+  {lx_css}
 
 </style>
 </head>
-<body class="{body_class}" data-style="{style_key}" data-compose="{compose}" data-motion="{motion}" data-caption="{caption}" data-align="{align}" data-kicker="{kicker}" data-orn="{orn}">
+<body class="{body_class}" data-style="{style_key}" data-compose="{compose}" data-motion="{motion}" data-caption="{caption}" data-align="{align}" data-kicker="{kicker}" data-orn="{orn}" data-motif="{motif}" data-htype="{htype}">
 <div class="progress" id="progress"></div>
 <div class="brand-tag"><span class="dot"></span>{title}</div>
 
@@ -4151,6 +4267,8 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
       {{ sel: '.bullets li', from: 0.16, dur: 0.42, kind: 'card', stagger: 0.07 }},
       {{ sel: '.v-tile, .v-card, .v-rail li, .v-agenda li, .v-col li, .v-chip', from: 0.16, dur: 0.42, kind: 'card', stagger: 0.07 }},
       {{ sel: '.v-lead', from: 0.10, dur: 0.48, kind: 'riseBlur' }},
+      {{ sel: '.lx-line path', from: 0.12, dur: 0.6, kind: 'lxfly' }},
+      {{ sel: '.lx-dot, .lx-c', from: 0.14, dur: 0.5, kind: 'lxfly' }},
       {{ sel: '.stat-card', from: 0.14, dur: 0.45, kind: 'pop', stagger: 0.08 }},
       {{ sel: '.steps .step', from: 0.16, dur: 0.42, kind: 'card', stagger: 0.07 }},
       {{ sel: '.cmp-col', from: 0.12, dur: 0.45, kind: 'rise', stagger: 0.10 }},
@@ -4184,7 +4302,7 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
     slide.__timeline = targets;
     // Focusable items get highlighted one-by-one in sync with the narration.
     slide.__focus = [...slide.querySelectorAll(
-      '.bullets li, .steps .step, .stat-card, .cmp-col, .hub-node, .panel-body .pl, .flow-node, .tr-chip, .bar-row, .mx-card, .v-tile, .v-card, .v-rail li, .v-agenda li, .v-col li, .v-chip'
+      '.bullets li, .steps .step, .stat-card, .cmp-col, .hub-node, .panel-body .pl, .flow-node, .tr-chip, .bar-row, .mx-card, .v-tile, .v-card, .v-rail li, .v-agenda li, .v-col li, .v-chip, .lx-c'
     )];
     // Weight each item's dwell time by how much text it shows, so a long bullet
     // stays highlighted longer than a short one — a much closer match to the
@@ -4208,6 +4326,7 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
     return targets;
   }}
 
+  {lx_js}
   function applyPose(t, frame) {{
     // frame is LOCAL to the slide (0-based), FPS-scaled offsets -> frames.
     const f0 = t.from * FPS;
@@ -4239,6 +4358,9 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
       const y = interpolate(frame, [f0, f1], [26, 0], easings.outExpo);
       const b = interpolate(frame, [f0, f1], [9, 0], easings.outCubic);
       transform = `translateY(${{y}}px) scale(${{s}})`; filter = `blur(${{b}}px)`;
+    }} else if (t.kind === 'lxfly') {{
+      const pose = lxPose(t, frame, f0, f1);
+      transform = pose.transform; filter = pose.filter;
     }} else if (t.kind === 'wipe') {{
       const sx = interpolate(frame, [f0, f1], [0, 1], easings.outExpo);
       transform = `scaleX(${{sx}})`;
@@ -4331,6 +4453,8 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
         const dim = activeIdx >= 0 && !active;
         el.classList.toggle('is-active', active);
         el.classList.toggle('is-dim', dim);
+        // Synthesized cells fade in during their entrance; don't force them opaque.
+        if (el.__lxEnd && frame < el.__lxEnd) return;
         // Explicit opacity beats the body.capture opacity:0 rule once revealed.
         el.style.opacity = dim ? '0.42' : '1';
         // Nested marks inherit parent opacity; clear leftover CSS animation state.
@@ -4390,6 +4514,7 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
     // window.__seekFrame; CSS keyframe entrances (wall-clock) are disabled via
     // body.capture so they don't fight the timeline. Build the timeline and
     // reset to frame 0 so the worker can seek from a known state.
+    try {{ lxFit(slides[n]); }} catch (e) {{ /* best-effort */ }}
     if (document.body.classList.contains('capture')) {{
       buildTimeline(slides[n]);
       window.__seekFrame(0, 1);

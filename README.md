@@ -13,7 +13,8 @@
   <a href="#how-to-use">How to use</a> ·
   <a href="#what-it-can-do">What it can do</a> ·
   <a href="#run-it">Run it</a> ·
-  <a href="#configure">Configure</a>
+  <a href="#configure">Configure</a> ·
+  <a href="#how-a-slide-fits-its-content">Slide layouts</a>
 </p>
 
 <p align="center">
@@ -57,14 +58,14 @@
 | **Publish pack** | Titles, captions, tags, thumbnails for YouTube, Instagram, X, LinkedIn, TikTok, Substack, Medium |
 | **Image lab** | Nano Banana Pro cloud thumbnails (Gemini). Local image models optional |
 | **C.H.I.T.T.I.** | In-app voice assistant (Gemini Live) while you work |
-| **Admin** | Users, invites, color palette, 108-slide visual preview, social credentials, cron papers, costs |
+| **Admin** | Users, invites, color palette, layout-family preview, social credentials, cron papers, costs |
 | **History** | Every generated session — reopen, re-run, or delete (fills after you run the pipeline) |
 | **Automation** | Admin cron: trending papers (HF / arXiv / Semantic Scholar) → overnight videos |
 
 <p align="center">
   <img src="docs/screenshots/admin.png" alt="Admin dashboard — visual styles preview" width="100%">
 </p>
-<p align="center"><sub>Admin (sign-in as admin): Users, Invites, Color palette, Visual styles (108 sample frames), Social, Cron jobs, Costs.</sub></p>
+<p align="center"><sub>Admin (sign-in as admin): Users, Invites, Color palette, Visual styles (one frame per layout family), Social, Cron jobs, Costs.</sub></p>
 
 <table>
   <tr>
@@ -140,6 +141,45 @@ Copy `.env.example` → `.env`. **Never commit `.env`.**
 | `AUTO_ENABLED` | Nightly paper → video scheduler (admin) |
 
 Social posting tokens live in `workspace/social_credentials.json` (admin UI), not in git.
+
+---
+
+## How a slide fits its content
+
+The same notes do not get a recoloured copy of one card stack. Each slide is laid out from its own items — how many there are, how long each line is, and an optional importance score — so the geometry changes with the data. The visual style you pick (Teach, Motion, Decks, …) chooses the first layout family, the background motif, and the heading treatment. Two styles never share that combination.
+
+| What you drop in | What you see |
+| --- | --- |
+| Four short takeaways | A treemap, an orbit, a stair, or a pinned-note scatter — whichever that style leads with, and a different one on the next slide |
+| One idea much more important than the rest | That line gets the large cell; the others shrink around it |
+| Three numbers (`98%`, `120ms`, `12,000 docs`) | Bar height or tile area follows the number, not a fixed three-column template |
+| Ordered steps | A path, a cascade, or stacked bands, so reading order stays obvious |
+| A slide with narration and no bullets | Short phrases are pulled from the narration and laid out the same way |
+| A quote, diagram, or before/after | Those keep their own frame; the fitter does not restyle them |
+
+Give a bullets slide a `weights` list (0–100, one score per bullet) when you want size to follow importance instead of sentence length:
+
+```json
+{
+  "heading": "What actually moved retention",
+  "layout": "bullets",
+  "weights": [100, 40, 25],
+  "bullets": [
+    "Weekly review cut churn in half",
+    "Onboarding email helped a little",
+    "A redesigned logo did not"
+  ],
+  "narration": "The weekly review mattered most. The email helped. The logo did not."
+}
+```
+
+Families the fitter can draw: treemap, orbit, cascade, masonry, path, golden split, bands, scatter, slices, skyline. A deck will not repeat a geometry, and it will not use the same family on two slides in a row.
+
+Check it locally:
+
+```bash
+.venv/bin/python scripts/check_layout_engine.py
+```
 
 ---
 

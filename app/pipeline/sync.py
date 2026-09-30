@@ -133,7 +133,16 @@ def slide_focus_texts(slide: dict[str, Any]) -> list[str]:
             if (isinstance(it, dict) and (it.get("label") or it.get("detail")))
             or (not isinstance(it, dict) and str(it).strip())
         ]
-    return [str(b) for b in (slide.get("bullets") or []) if str(b).strip()]
+    texts = [str(b) for b in (slide.get("bullets") or []) if str(b).strip()]
+    if not texts and layout in ("", "bullets") and not slide.get("image"):
+        # The layout synthesizer derives items from narration when a slide has
+        # no bullets; mirror it so the highlight walk and captured frames agree.
+        from .. import layout_engine
+
+        texts = layout_engine.derive_items(str(slide.get("narration") or ""))
+        if len(texts) < 2:
+            return []
+    return texts
 
 
 def min_visual_seconds(slide: dict[str, Any], motion_seconds: float = 1.8) -> float:

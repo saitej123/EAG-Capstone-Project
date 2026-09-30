@@ -215,7 +215,7 @@
                 <i class="opts-chevron" data-lucide="chevron-down"></i>
               </summary>
               <div class="opts-body">
-                <p class="format-desc visual-design-lead">Each layout is a unique HTML frame with its own typeface. Group by Teach, Motion, HyperFrames, Decks, Story, Data, or Code. Admin preview has 108 sample slides. Colors are six palettes on the strip.</p>
+                <p class="format-desc visual-design-lead">Each layout is a unique HTML frame with its own typeface. Group by Teach, Motion, HyperFrames, Decks, Story, Data, or Code. Admin preview shows one frame per layout family (treemap, orbit, cascade, and the rest). Colors are six palettes on the strip.</p>
                 <div class="visual-style-filters" id="visual-style-filters" role="tablist" aria-label="Layout groups"></div>
                 <div class="visual-preset-grid" id="visual-preset-grid"></div>
                 <div class="visual-color-strip" id="visual-color-strip" hidden>
@@ -1011,7 +1011,7 @@
       <div class="admin-panel hidden" id="admin-panel-visual">
         <div class="admin-panel-head">
           <div class="admin-panel-title">Visual styles
-            <span class="sub">Same catalog as Studio, Present, and Cron. 108 unique sample frames per layout. Fonts follow the group (Teach, Motion, HyperFrames, Decks, Story, Data, Code). Six palettes on the strip — never a color-clone layout.</span>
+            <span class="sub">Same catalog as Studio, Present, and Cron. Each layout opens on its own family, then you can step through the other nine. Fonts follow the group (Teach, Motion, HyperFrames, Decks, Story, Data, Code). Six palettes on the strip — never a color-clone layout.</span>
           </div>
         </div>
         <div class="visual-styles-layout">
@@ -1038,12 +1038,12 @@
               <button type="button" class="btn-sm" id="admin-slide-prev" title="Previous sample slide">
                 <i data-lucide="chevron-left"></i> Previous
               </button>
-              <span class="visual-slide-counter" id="admin-slide-counter">1 / 108</span>
+              <span class="visual-slide-counter" id="admin-slide-counter">1 / 10</span>
               <button type="button" class="btn-sm" id="admin-slide-next" title="Next sample slide">
                 Next <i data-lucide="chevron-right"></i>
               </button>
             </div>
-            <input type="range" class="range range-sm w-full" id="admin-slide-range" min="0" max="107" value="0" aria-label="Sample slide" />
+            <input type="range" class="range range-sm w-full" id="admin-slide-range" min="0" max="9" value="0" aria-label="Sample slide" />
             <div class="visual-slide-dots" id="admin-slide-dots" role="tablist" aria-label="Sample slides"></div>
           </div>
         </div>

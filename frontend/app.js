@@ -919,7 +919,9 @@ const STYLE_ICONS = {
 };
 
 /** Shared Studio + Admin layout card — preview + font + variety (not color-only). */
-function visualLayoutCardHtml(p, { admin = false } = {}) {
+function visualLayoutCardHtml(p, opts) {
+  if (typeof window.__layoutCardHtml === "function") return window.__layoutCardHtml(p, opts || {});
+  const { admin = false } = opts || {};
   const sk = p.key === "auto" ? "auto" : (p.style || "explainer");
   const icon = STYLE_ICONS[sk] || "type";
   const previewCls = "style-preview style-preview-" + (sk === "auto" ? "modern" : sk);
@@ -2310,6 +2312,7 @@ const UNIVERSAL_SLIDE_LIBRARY = [
 const MAX_STYLE_PREVIEW_SLIDES = 20;
 
 function adminSlideKit(styleKey) {
+  if (typeof window.uniquePreviewKit === "function") return window.uniquePreviewKit(styleKey);
   const base = STYLE_PREVIEW_KITS[styleKey] || STYLE_PREVIEW_KITS.explainer || [];
   const seen = new Set(base.map((s) => s.key));
   const merged = base.slice();
@@ -2413,10 +2416,10 @@ function renderAdminSlidePreview() {
   const swatchEl = $("admin-style-swatch");
   if (name) name.textContent = preset.label || `${styleMeta.label} · ${preset.theme_label || ""}`;
   if (desc) {
-    const fontBit = (preset.font_label || styleMeta.font_label)
-      ? `Font: ${preset.font_label || styleMeta.font_label}. `
-      : "";
-    desc.textContent = fontBit + (preset.description || styleMeta.description || "");
+    const fontName = preset.font_label || styleMeta.font_label || "";
+    const rawDesc = preset.description || styleMeta.description || "";
+    const already = fontName && rawDesc.toLowerCase().includes(fontName.toLowerCase());
+    desc.textContent = (fontName && !already ? `Font: ${fontName}. ` : "") + rawDesc;
   }
   if (tmpl) {
     const variety = preset.variety || preset.template || styleMeta.template || "";
@@ -2453,6 +2456,12 @@ function renderAdminSlidePreview() {
 
   const counter = $("admin-slide-counter");
   if (counter) counter.textContent = `${adminSlideIdx + 1} / ${kit.length} · ${mock.label}`;
+  const range = $("admin-slide-range");
+  if (range) {
+    range.min = "0";
+    range.max = String(Math.max(0, kit.length - 1));
+    range.value = String(adminSlideIdx);
+  }
 
   const dots = $("admin-slide-dots");
   if (dots) {
@@ -5806,6 +5815,11 @@ function initNav() {
   if (slidePrev) slidePrev.addEventListener("click", () => adminSlideStep(-1));
   const slideNext = $("admin-slide-next");
   if (slideNext) slideNext.addEventListener("click", () => adminSlideStep(1));
+  const slideRange = $("admin-slide-range");
+  if (slideRange) slideRange.addEventListener("input", () => {
+    adminSlideIdx = Number(slideRange.value) || 0;
+    renderAdminSlidePreview();
+  });
   const scref = $("social-creds-refresh");
   if (scref) scref.addEventListener("click", loadSocialCredentials);
 }

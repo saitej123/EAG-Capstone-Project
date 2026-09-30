@@ -1,14 +1,18 @@
-/* Overlay loaded AFTER app.js: unique layouts, 108 frames, group fonts, cron sync.
- * Survives app.js reverting to the old 3-slide STYLE_PREVIEW_KITS path.
+/* Overlay loaded AFTER app.js: data-fit layout previews and cron style sync.
+ * app.js calls uniquePreviewKit / __layoutCardHtml when this file has loaded.
  */
 (function () {
-  const MAX_SLIDES = 108;
+  const FAMILIES = ["treemap", "orbit", "cascade", "masonry", "path", "golden", "bands", "scatter", "slices", "skyline"];
+  const FAMILY_LABEL = {
+    treemap: "Treemap", orbit: "Orbit", cascade: "Cascade", masonry: "Masonry",
+    path: "Path", golden: "Golden split", bands: "Bands", scatter: "Scatter",
+    slices: "Slices", skyline: "Skyline",
+  };
   const THEME_ALIASES = {
     paper: "snow", ivory: "snow", mint: "snow",
     nebula: "aurora", slate: "midnight", mono: "midnight",
   };
   const catalog = { styles: [], presets: [], themes: [] };
-  let overlayIdx = 0;
 
   function $(id) { return document.getElementById(id); }
   function esc(x) {
@@ -29,123 +33,123 @@
     }
     return h >>> 0;
   }
-  function styleKeyFromFrame() {
-    const frame = $("admin-slide-frame");
-    return (frame && frame.dataset.style) || "whiteboard";
+  function familyOrder(styleKey) {
+    const lead = fnv(styleKey) % FAMILIES.length;
+    return FAMILIES.slice(lead).concat(FAMILIES.slice(0, lead));
+  }
+
+  function cellsFor(family, n, seed) {
+    const count = Math.max(3, Math.min(5, n || 4));
+    const flip = seed % 2 === 1;
+    const bias = 42 + (seed % 5) * 4;
+    let cells = [];
+    if (family === "treemap" || family === "golden") {
+      cells.push({ x: 0, y: 0, w: bias, h: 100 });
+      const rest = count - 1;
+      const gap = 2;
+      const rw = 100 - bias - gap;
+      const h = (100 - gap * (rest - 1)) / rest;
+      for (let i = 0; i < rest; i++) cells.push({ x: bias + gap, y: i * (h + gap), w: rw, h });
+    } else if (family === "orbit") {
+      cells.push({ x: 36, y: 30, w: 28, h: 40 });
+      const ring = count - 1;
+      const dir = seed % 2 ? -1 : 1;
+      for (let i = 0; i < ring; i++) {
+        const ang = -Math.PI / 2 + dir * i * (2 * Math.PI / ring);
+        cells.push({ x: 50 + Math.cos(ang) * 34 - 10, y: 50 + Math.sin(ang) * 32 - 12, w: 20, h: 24 });
+      }
+    } else if (family === "cascade") {
+      const step = 7 + (seed % 3) * 3;
+      const h = (100 - 2 * (count - 1)) / count;
+      for (let i = 0; i < count; i++) {
+        const x = (seed % 3 === 2) ? (i % 2) * step : step * i;
+        cells.push({ x, y: i * (h + 2), w: 100 - step * (count - 1), h });
+      }
+    } else if (family === "masonry") {
+      const cols = count >= 5 ? 3 : 2;
+      const gap = 3;
+      const cw = (100 - gap * (cols - 1)) / cols;
+      const rows = Math.ceil(count / cols);
+      const rh = (100 - gap * (rows - 1)) / rows;
+      for (let i = 0; i < count; i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        cells.push({ x: col * (cw + gap), y: row * (rh + gap), w: cw, h: rh });
+      }
+    } else if (family === "bands") {
+      const weights = [1.45, 1, 0.75, 1.15, 0.9].slice(0, count);
+      const sum = weights.reduce((a, b) => a + b, 0);
+      let y = 0;
+      weights.forEach((w, i) => {
+        const h = (100 - 2 * (count - 1)) * w / sum;
+        const inset = (seed % 3 === 1) ? (i % 2) * 16 : 0;
+        cells.push({ x: i % 2 ? inset : 0, y, w: 100 - inset, h });
+        y += h + 2;
+      });
+    } else if (family === "skyline" || family === "slices") {
+      const gap = 2.5;
+      const cw = (100 - gap * (count - 1)) / count;
+      for (let i = 0; i < count; i++) {
+        const h = 38 + ((seed + i * 19) % 54);
+        cells.push({ x: i * (cw + gap), y: 100 - h, w: cw, h });
+      }
+    } else if (family === "scatter") {
+      const cols = 3;
+      for (let i = 0; i < count; i++) {
+        const col = (seed + i * 2) % cols;
+        const row = Math.floor(i / 2) % 2;
+        const rot = ((seed + i) % 5) - 2;
+        cells.push({ x: 3 + col * 32, y: 8 + row * 46, w: 26, h: 36, rot });
+      }
+    } else {
+      const cw = Math.min(26, 78 / count);
+      for (let i = 0; i < count; i++) {
+        const t = count === 1 ? 0.5 : i / (count - 1);
+        const x = cw / 2 + t * (100 - cw);
+        const up = i % 2 === (seed % 2);
+        cells.push({ x: x - cw / 2, y: up ? 8 : 54, w: cw, h: 34 });
+      }
+    }
+    if (flip && family !== "orbit" && family !== "path") {
+      cells = cells.map((c) => ({ ...c, x: +(100 - c.x - c.w).toFixed(2) }));
+    }
+    return cells;
+  }
+
+  function stageHtml(family, labels, seed, mini) {
+    const cells = cellsFor(family, labels.length, seed);
+    const bits = cells.map((c, i) => {
+      const rot = c.rot ? `;transform:rotate(${c.rot}deg)` : "";
+      const box = `left:${c.x.toFixed(2)}%;top:${c.y.toFixed(2)}%;width:${c.w.toFixed(2)}%;height:${Math.max(8, c.h).toFixed(2)}%${rot}`;
+      if (mini) return `<i style="${box}"></i>`;
+      return `<div class="fit-c" style="${box}"><b>${String(i + 1).padStart(2, "0")}</b><span>${esc(labels[i] || "")}</span></div>`;
+    }).join("");
+    return `<span class="${mini ? "lx-mini" : "fit-stage"}" data-fam="${family}">${bits}</span>`;
   }
 
   function visualPreviewInner(compose, styleKey) {
-    const c = compose || "stack";
-    const n = fnv(String(styleKey || c));
-    const mono = `<span class="sp-mono">${esc(String(styleKey || c).replace(/_/g, "").slice(0, 2))}</span>`;
-    const thumbs = [
-      `<span class="sp-term"><i></i><i></i><i></i></span>`,
-      `<span class="sp-split" aria-hidden="true"><i></i><i></i></span>`,
-      `<span class="sp-kpi" aria-hidden="true">42</span>`,
-      `<span class="sp-bento" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`,
-      `<span class="sp-line sp-body"></span><span class="sp-lower"></span>`,
-      `<span class="sp-line sp-title sp-center"></span><span class="sp-line sp-body short sp-center"></span>`,
-      `<span class="sp-rail" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`,
-      `<span class="sp-quote">“ ”</span>`,
-      `<span class="sp-poster"><span class="sp-line sp-title"></span></span>`,
-      `<span class="sp-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`,
-      `<span class="sp-ring" aria-hidden="true"></span>`,
-      `<span class="sp-map" aria-hidden="true"></span>`,
-      `<span class="sp-letterbox" aria-hidden="true"><i></i><i></i></span>`,
-      `<span class="sp-funnel" aria-hidden="true"><i></i><i></i><i></i></span>`,
-      `<span class="sp-pills" aria-hidden="true"><i></i><i></i><i></i></span>`,
-      `<span class="sp-stack" aria-hidden="true"><i></i><i></i></span>`,
-      `<span class="sp-line sp-title"></span><span class="sp-line sp-body short"></span>`,
-      `<span class="sp-kpi" aria-hidden="true">★</span>`,
-    ];
-    const named = {
-      chalkboard: 0, terminal: 0, blueprint: 0, code_hike: 0, scramble: 0,
-      split: 1, dual: 1, pip: 1, device: 1,
-      kpi: 2, counter_ring: 10, donut_stat: 10, zoom_punch: 2,
-      bento: 3, mosaic: 3, quad: 3, kanban: 3, cards_stack: 15, spring_cards: 15,
-      lower_third: 4, news_lower: 4, broadcast: 4, ticker: 14, news_stack: 4,
-      kinetic_center: 5, caption: 5, mega_type: 5, karaoke: 14,
-      rail: 6, chapters: 6, progress_track: 6, filmstrip: 6, subway: 6,
-      quote: 7, magazine: 7, poster: 8, glitch_type: 8, neon_sign: 8,
-      audiogram: 9, podcast_tile: 9, travel_map: 11, particle_field: 11,
-      letterbox: 12, light_leak: 12, funnel: 13, cycle: 14, word_cloud: 14,
-      stack: 16, swiss: 16, glass: 15, polaroid: 15,
-      stargazer: 17, repo_stars: 17, mask_reveal: 5, safe_overlay: 8,
-    };
-    const idx = Object.prototype.hasOwnProperty.call(named, c) ? named[c] : (n % thumbs.length);
-    return thumbs[idx] + mono;
+    const key = String(styleKey || compose || "stack");
+    return stageHtml(familyOrder(key)[0], ["", "", "", ""], fnv(key), true);
   }
 
   function uniquePreviewKit(styleKey) {
     const meta = catalog.styles.find((s) => s.key === styleKey) || {};
     const preset = catalog.presets.find((p) => p.style === styleKey) || {};
-    const label = meta.label || preset.style_label || String(styleKey).replace(/_/g, " ");
-    const compose = meta.layout_mode || preset.layout_mode || "stack";
-    const uses = meta.uses || preset.uses || meta.example || label;
-    const desc = String(meta.description || preset.description || uses).split(".")[0];
+    const label = meta.label || preset.style_label || String(styleKey || "style").replace(/_/g, " ");
     const beats = String(meta.template || preset.template || "Open → Teach → Prove → Close")
       .split(/\s*→\s*|\s*->\s*|\s*,\s*/).map((x) => x.trim()).filter(Boolean);
-    while (beats.length < 8) beats.push(beats[beats.length - 1] || "Beat");
+    while (beats.length < 6) beats.push(beats[beats.length - 1] || "Beat");
     const n = fnv(styleKey);
-    const punch = label.split(/\s+/).slice(-1)[0] || label;
-    const L = esc(label);
-    const U = esc(uses);
-    const D = esc(desc);
-    const P = esc(punch);
-    const C = esc(String(compose).replace(/_/g, " "));
-    const b = (i) => esc(beats[i % beats.length]);
-    const widgets = [
-      () => `<div class="vs-kicker vs-a-in">${L}</div><div class="vs-title vs-a-clip">${P}</div><p class="vs-body">${D}</p>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-title vs-a-clip" style="text-align:center">${P}</div><p class="vs-body" style="text-align:center">${U}</p>`,
-      () => `<div class="vs-kicker vs-a-in">${C}</div><div class="vs-title vs-a-clip">${b(0)}</div><p class="vs-body">${L} · clip-path wipe</p>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-title sm vs-a-up"><span style="color:var(--palette-accent,#a855f7)">${b(0)}</span> ${b(1)} ${b(2)}</div><p class="vs-body">Karaoke captions</p>`,
-      () => `<div class="vs-kicker">${L}</div><blockquote class="vs-quote vs-a-up">“${D}”</blockquote>`,
-      () => `<div class="vs-split"><div class="vs-split-a vs-a-left"><div class="vs-kicker">${L}</div><div class="vs-title sm">${b(0)}</div></div><div class="vs-split-b vs-a-right"><div class="vs-kicker">${C}</div><div class="vs-title sm">${b(1)}</div></div></div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-title sm vs-a-up">${b(0)}</div><div class="vs-min-list vs-a-up"><p>${b(1)}</p><p>${b(2)}</p><p>${b(3)}</p></div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-cards-3"><div class="vs-mini-card vs-a-stagger"><b>01</b><strong>${b(0)}</strong></div><div class="vs-mini-card vs-a-stagger"><b>02</b><strong>${b(1)}</strong></div><div class="vs-mini-card vs-a-stagger"><b>03</b><strong>${b(2)}</strong></div></div>`,
-      () => `<div class="vs-cards-3"><div class="vs-mini-card vs-a-stagger" style="grid-column:span 2"><strong>${L}</strong><span>${b(0)}</span></div><div class="vs-mini-card vs-a-stagger"><strong>${b(1)}</strong></div><div class="vs-mini-card vs-a-stagger"><strong>${b(2)}</strong></div></div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-scorecard"><div class="vs-a-pop"><b>${(n % 89) + 11}</b><span>${b(0)}</span></div><div class="vs-a-pop"><b>${(n % 7) + 2}×</b><span>${b(1)}</span></div><div class="vs-a-pop"><b>${(n % 40) + 60}%</b><span>${b(2)}</span></div></div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-a-pop" style="width:120px;height:120px;border-radius:50%;border:10px solid color-mix(in srgb, currentColor 20%, transparent);border-top-color:var(--palette-accent,#a855f7);margin:12px auto"></div><div class="vs-title sm" style="text-align:center">${(n % 40) + 60}%</div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-cin-bars"><i style="--w:${40 + (n % 40)}%"></i><i style="--w:${55 + (n % 30)}%"></i><i style="--w:${30 + (n % 50)}%"></i></div><p class="vs-body">${b(0)} · chart race</p>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-timeline vs-a-fade"><div class="vs-tl-item on"><b>1</b><span>${b(0)}</span></div><div class="vs-tl-item on"><b>2</b><span>${b(1)}</span></div><div class="vs-tl-item"><b>3</b><span>${b(2)}</span></div><div class="vs-tl-item"><b>4</b><span>${b(3)}</span></div></div>`,
-      () => `<div class="vs-term vs-a-up"><div class="vs-term-bar"><i></i><i></i><i></i><span>${esc(styleKey)}</span></div><div class="vs-term-body"><p><span class="vs-term-p">$</span> ${C}</p><p class="vs-term-ok">✓ ${b(0)}</p></div></div>`,
-      () => `<div class="vs-kicker">code hike</div><div class="vs-min-list vs-a-up"><p>  ${b(0)}</p><p style="border-left:3px solid var(--palette-accent,#a855f7);padding-left:8px">${b(1)}</p><p>  ${b(2)}</p></div>`,
-      () => `<div class="vs-kicker">LIVE</div><div class="vs-title sm">${b(0)}</div><div class="vs-chip-row"><span class="vs-chip">${P}</span><span class="vs-chip">${C}</span><span class="vs-chip">${b(1)}</span></div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-min-list vs-a-up" style="align-items:center"><p style="width:100%">${b(0)}</p><p style="width:78%">${b(1)}</p><p style="width:52%">${b(2)}</p></div>`,
-      () => `<div class="vs-kicker">${L}</div><div class="vs-title sm vs-a-up">${b(0)} → ${b(1)}</div><p class="vs-body">${U}</p>`,
-    ];
-    const widgetIds = ["cover","type","wipe","karaoke","quote","split","list","cards","bento","kpi","ring","bars","rail","term","hike","ticker","funnel","map"];
-    const chromeIds = ["plain","term","letterbox","board","poster","lower"];
-    const chromes = [
-      (inner) => inner,
-      (inner) => `<div class="vs-term vs-a-up"><div class="vs-term-bar"><i></i><i></i><i></i><span>${esc(styleKey)}</span></div><div class="vs-term-body">${inner}</div></div>`,
-      (inner) => `<div class="vs-letterbox-frame"><i></i><div class="vs-letterbox-mid">${inner}</div><i></i></div>`,
-      (inner) => `<div class="vs-board-frame">${inner}</div>`,
-      (inner) => `<div class="vs-poster-frame">${inner}</div>`,
-      (inner) => `${inner}<div class="vs-cta-pill vs-a-pulse">${b(0)} · ${L}</div>`,
-    ];
-    const leadChrome = {
-      chalkboard: 3, terminal: 1, blueprint: 3, code_hike: 1, scramble: 1,
-      letterbox: 2, cinematic: 2, documentary: 2,
-      poster: 4, mega_type: 4, neon_sign: 4,
-      lower_third: 5, broadcast: 5, ticker: 5, news_lower: 5,
-      kinetic_center: 0, caption: 0, karaoke: 0,
-    }[compose] || 0;
-    const frames = [];
-    for (let w = 0; w < widgets.length; w++) {
-      for (let ch = 0; ch < chromes.length; ch++) {
-        frames.push({ w, ch, id: `${chromeIds[ch]}-${widgetIds[w]}` });
-      }
-    }
-    const lead = frames.filter((f) => f.ch === leadChrome);
-    const rest = frames.filter((f) => f.ch !== leadChrome);
-    const rot = n % Math.max(rest.length, 1);
-    const seq = lead.concat(rest.slice(rot), rest.slice(0, rot)).slice(0, MAX_SLIDES);
-    return seq.map((f) => ({
-      key: f.id,
-      label: `${label} · ${f.id}`,
-      html: () => chromes[f.ch](widgets[f.w]()),
-    }));
+    return familyOrder(styleKey).map((fam, i) => {
+      const count = 3 + ((n + i) % 3);
+      const labels = [];
+      for (let k = 0; k < count; k++) labels.push(beats[(i + k) % beats.length]);
+      return {
+        key: fam,
+        label: `${label} · ${FAMILY_LABEL[fam] || fam}`,
+        html: () => `<div class="vs-kicker">${esc(FAMILY_LABEL[fam] || fam)}</div>${stageHtml(fam, labels, n + i * 13, false)}`,
+      };
+    });
   }
 
   function visualLayoutCardHtml(p, opts) {
@@ -161,9 +165,13 @@
     const cat = p.category_label || "";
     const fontStyle = fontStack ? ` style="font-family:${esc(fontStack)}"` : "";
     const icon = admin ? `<i data-lucide="layout-template"></i>` : "";
+    const sw = (p.swatch || []).slice(0, 3).map((c) => `<i class="vp-dot" style="background:${esc(c)}"></i>`).join("");
+    const themeName = p.key === "auto" ? "Smart match" : (p.theme_label || "");
     return (
       `<span class="${previewCls}" aria-hidden="true"${fontStyle}>${visualPreviewInner(compose, sk)}</span>` +
+      (sw ? `<span class="vp-swatch">${sw}</span>` : "") +
       `<span class="vp-label"${fontStyle}>${icon}${esc(styleName)}</span>` +
+      (themeName ? `<span class="vp-theme">${esc(themeName)}</span>` : "") +
       (fontName ? `<span class="vp-font">Aa · ${esc(fontName)}</span>` : "") +
       (cat && p.key !== "auto" ? `<span class="vp-cat">${esc(cat)}</span>` : "") +
       (variety ? `<span class="vp-variety">${esc(variety)}</span>` : "") +
@@ -198,37 +206,6 @@
     }
   }
 
-  function paintSlide(idx) {
-    const styleKey = styleKeyFromFrame();
-    const kit = uniquePreviewKit(styleKey);
-    if (!kit.length) return;
-    overlayIdx = ((idx % kit.length) + kit.length) % kit.length;
-    const mock = kit[overlayIdx];
-    const canvas = $("admin-slide-canvas");
-    const meta = catalog.styles.find((s) => s.key === styleKey) || {};
-    if (canvas) {
-      const stack = meta.font_stack || "";
-      if (stack) {
-        canvas.style.fontFamily = stack;
-        canvas.style.setProperty("--slide-font", stack);
-      }
-      canvas.innerHTML = mock.html();
-      canvas.classList.remove("vs-play");
-      void canvas.offsetWidth;
-      canvas.classList.add("vs-play");
-    }
-    const counter = $("admin-slide-counter");
-    if (counter) counter.textContent = `${overlayIdx + 1} / ${kit.length} · ${mock.label}`;
-    const range = $("admin-slide-range");
-    if (range) {
-      range.min = "0";
-      range.max = String(kit.length - 1);
-      range.value = String(overlayIdx);
-    }
-    const dots = $("admin-slide-dots");
-    if (dots) { dots.innerHTML = ""; dots.hidden = true; }
-  }
-
   async function refreshCatalog() {
     try {
       const data = await (await fetch("/api/video-formats")).json();
@@ -241,34 +218,11 @@
   window.adminSlideKit = function adminSlideKit(styleKey) {
     return uniquePreviewKit(styleKey);
   };
+  window.__layoutCardHtml = visualLayoutCardHtml;
   window.visualLayoutCardHtml = visualLayoutCardHtml;
   window.visualPreviewInner = visualPreviewInner;
   window.uniquePreviewKit = uniquePreviewKit;
   window.fillCronVisualSelects = fillCronVisualSelects;
-  window.MAX_STYLE_PREVIEW_SLIDES = MAX_SLIDES;
-
-  const origPreview = typeof renderAdminSlidePreview === "function" ? renderAdminSlidePreview : null;
-  window.renderAdminSlidePreview = function renderAdminSlidePreview() {
-    if (origPreview) origPreview();
-    overlayIdx = 0;
-    paintSlide(0);
-  };
-
-  document.addEventListener("click", (e) => {
-    const prev = e.target.closest && e.target.closest("#admin-slide-prev");
-    const next = e.target.closest && e.target.closest("#admin-slide-next");
-    if (!prev && !next) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    paintSlide(overlayIdx + (next ? 1 : -1));
-  }, true);
-
-  document.addEventListener("input", (e) => {
-    if (!e.target || e.target.id !== "admin-slide-range") return;
-    paintSlide(Number(e.target.value) || 0);
-  }, true);
-
   const origFetch = window.fetch.bind(window);
   window.fetch = function (url, opts) {
     const u = String(url || "");
