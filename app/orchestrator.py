@@ -240,10 +240,17 @@ def stage_generate(job: Job) -> None:
                 cover_image = f"pages/{page_files[0].name}"
 
         html_path = work / "presentation.html"
+        job.options["work_dir"] = str(work)
+        job.options["job_id"] = job.id
         model, used_llm = content.generate_animated_html(
             raw_text, html_path, job.options, cover_image=cover_image
         )
         store.set_artifact(job, "html", f"/files/{job.id}/presentation.html")
+        if model.get("agent_receipt"):
+            store.set_content(job, "agent_receipt", model["agent_receipt"])
+            trace_file = work / "agent_trace.jsonl"
+            if trace_file.exists():
+                store.set_artifact(job, "agent_trace", f"/files/{job.id}/agent_trace.jsonl")
         store.set_content(job, "slides", model["slides"])
         store.set_content(job, "slide_title", model.get("title", "Overview"))
         if model.get("doc_type"):

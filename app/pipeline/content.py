@@ -1715,6 +1715,43 @@ def build_slide_model(
         opts.pop("video_theme_reason", None)
     else:
         apply_auto_video_theme(opts, analysis=analysis)
+
+    # 1. Agentic AI Harness: ReAct loop with tools, layered memory, and self-critique
+    use_agent = bool(opts.get("use_agent_harness", True))
+    if use_agent and llm_available():
+        try:
+            import time
+            from .agent_harness import AgentHarness
+
+            session_id = str(opts.get("job_id") or opts.get("session_id") or f"gen_{int(time.time())}")
+            work_dir = Path(opts["work_dir"]) if opts.get("work_dir") else None
+            harness = AgentHarness(session_id=session_id, options=opts, work_dir=work_dir)
+            model, used_llm, receipt = harness.run(raw_text, cover_image)
+            opts["agent_receipt"] = receipt
+            model["agent_receipt"] = receipt
+            model = _enforce_word_budget(model, opts)
+            log.bind(task="generate").success(
+                f"Agent Harness completed {len(receipt.get('steps', []))} turns: {len(model.get('slides', []))} slides "
+                f"(style: {opts.get('video_style', 'n/a')}, theme: {opts.get('video_theme', 'n/a')})"
+            )
+            if analysis:
+                model["doc_type"] = _normalize_doc_type(str(analysis.get("doc_type", "")))
+                model["doc_analysis"] = analysis
+            model["video_style"] = opts.get("video_style")
+            model["video_style_label"] = opts.get("video_style_label")
+            model["video_style_reason"] = opts.get("video_style_reason")
+            model["video_style_was_auto"] = bool(opts.get("video_style_was_auto"))
+            model["video_theme"] = opts.get("video_theme")
+            model["video_theme_label"] = opts.get("video_theme_label")
+            model["video_theme_reason"] = opts.get("video_theme_reason")
+            model["video_theme_was_auto"] = bool(opts.get("video_theme_was_auto"))
+            return model, used_llm
+        except Exception as e:
+            log.bind(task="generate").warning(
+                f"Agent harness slide generation failed ({e}); falling back to standard LLM flow: {e}"
+            )
+
+    # 2. Standard single-shot LLM flow (fallback if harness is bypassed or hits error)
     if llm_available():
         try:
             model = generate_slides_with_gemini(raw_text, opts, analysis, cover_image)

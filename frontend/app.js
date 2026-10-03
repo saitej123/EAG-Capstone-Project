@@ -5038,6 +5038,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initAudience();
   initSwitch();
   initSessionTabs();
+  initHarnessPanel();
   loadVideoFormats();
   loadCapabilities();
   loadSessions();
@@ -5931,6 +5932,7 @@ function switchAdminPanel(panel) {
   if (adminPanel === "social") loadSocialCredentials();
   if (adminPanel === "cron") { loadCron(); loadAutomation(); loadRuntimeSettings(); }
   if (adminPanel === "costs") loadCosts();
+  if (adminPanel === "harness") loadAgentHarnessPanel();
   icons();
 }
 
@@ -7786,6 +7788,214 @@ function renderCosts(rep) {
   // Cost cards have no Lucide icons — skip createIcons to avoid header flicker.
   // Sub-tabs do; refresh icons when breakdown is shown.
   if (has && typeof icons === "function") icons();
+}
+
+// -------------------------------------------------------- Agent Harness & Memory ----
+let harnessActiveTab = "memory";
+
+function initHarnessPanel() {
+  document.querySelectorAll(".harness-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      harnessActiveTab = btn.dataset.harnessTab || "memory";
+      document.querySelectorAll(".harness-tab").forEach((b) =>
+        b.classList.toggle("active", b.dataset.harnessTab === harnessActiveTab)
+      );
+      ["memory", "tools", "trace"].forEach((t) => {
+        const pane = $("harness-pane-" + t);
+        if (pane) pane.classList.toggle("hidden", t !== harnessActiveTab);
+      });
+      icons();
+    });
+  });
+
+  const refBtn = $("harness-refresh");
+  if (refBtn) refBtn.addEventListener("click", loadAgentHarnessPanel);
+
+  const memBtn = $("harness-mem-btn");
+  if (memBtn) memBtn.addEventListener("click", () => {
+    const q = ($("harness-mem-search") && $("harness-mem-search").value) || "";
+    const ns = ($("harness-mem-ns") && $("harness-mem-ns").value) || "";
+    loadHarnessMemory(q, ns);
+  });
+
+  const memForm = $("harness-mem-form");
+  if (memForm) {
+    memForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const ns = ($("hmem-ns") && $("hmem-ns").value) || "general";
+      const key = ($("hmem-key") && $("hmem-key").value.trim()) || "";
+      const tags = ($("hmem-tags") && $("hmem-tags").value.trim()) || "";
+      const val = ($("hmem-val") && $("hmem-val").value.trim()) || "";
+      const msg = $("harness-mem-msg");
+      if (!key || !val) return;
+      try {
+        let parsedVal = val;
+        try { parsedVal = JSON.parse(val); } catch (_) {}
+        const res = await fetch("/api/agent/memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, value: parsedVal, namespace: ns, tags }),
+        });
+        if (!res.ok) throw new Error("Failed to save memory");
+        if (msg) {
+          msg.textContent = `Stored "${key}" in ${ns}!`;
+          msg.className = "user-add-msg ok";
+          msg.classList.remove("hidden");
+        }
+        loadHarnessMemory();
+      } catch (err) {
+        if (msg) {
+          msg.textContent = err.message || "Error saving memory";
+          msg.className = "user-add-msg err";
+          msg.classList.remove("hidden");
+        }
+      }
+    });
+  }
+}
+
+async function loadAgentHarnessPanel() {
+  await Promise.all([
+    loadHarnessTools(),
+    loadHarnessMemory(),
+    loadHarnessRecentTrace(),
+  ]);
+  icons();
+}
+
+async function loadHarnessTools() {
+  try {
+    const res = await fetch("/api/agent/tools");
+    const data = await res.json().catch(() => ({}));
+    const tools = data.tools || [];
+    const valEl = $("harness-tools-val");
+    if (valEl) valEl.textContent = `${tools.length} Registered Tools`;
+
+    const grid = $("harness-tools-grid");
+    if (!grid) return;
+    grid.innerHTML = tools.map((t) => {
+      const paramList = Object.keys((t.parameters && t.parameters.properties) || {}).join(", ") || "none";
+      return `
+        <div class="harness-tool-card">
+          <div class="harness-tool-head">
+            <span class="harness-tool-name"><i data-lucide="wrench"></i> ${escapeHtml(t.name)}</span>
+            <span class="harness-tool-badge">Tool</span>
+          </div>
+          <p class="harness-tool-desc">${escapeHtml(t.description || "")}</p>
+          <div class="harness-tool-params">Parameters: (${escapeHtml(paramList)})</div>
+        </div>
+      `;
+    }).join("");
+    icons();
+  } catch (e) {
+    console.warn("Failed to load harness tools", e);
+  }
+}
+
+async function loadHarnessMemory(query = "", namespace = "") {
+  try {
+    const q = new URLSearchParams();
+    if (query) q.set("query", query);
+    if (namespace) q.set("namespace", namespace);
+    const res = await fetch(`/api/agent/memory?${q.toString()}`);
+    const data = await res.json().catch(() => ({}));
+    const items = data.items || [];
+
+    const memVal = $("harness-memory-val");
+    if (memVal) memVal.textContent = `${data.count || items.length} Stored Items`;
+
+    const list = $("harness-memory-list");
+    if (!list) return;
+    if (!items.length) {
+      list.innerHTML = `<div class="admin-empty" style="grid-column:1/-1">No memory items match "${escapeHtml(query || namespace || "all")}".</div>`;
+      return;
+    }
+    list.innerHTML = items.map((m) => {
+      const valStr = typeof m.value === "object" ? JSON.stringify(m.value, null, 2) : String(m.value);
+      const tagList = (m.tags || "").split(",").map((t) => t.trim()).filter(Boolean);
+      const tagsHtml = tagList.map((t) => `<span class="harness-mem-tag">${escapeHtml(t)}</span>`).join("");
+      return `
+        <div class="harness-memory-card">
+          <div class="harness-mem-top">
+            <span class="harness-mem-key">${escapeHtml(m.key)}</span>
+            <span class="harness-mem-ns">${escapeHtml(m.namespace)}</span>
+          </div>
+          ${tagsHtml ? `<div class="harness-mem-tags">${tagsHtml}</div>` : ""}
+          <pre class="harness-mem-val">${escapeHtml(valStr)}</pre>
+        </div>
+      `;
+    }).join("");
+  } catch (e) {
+    console.warn("Failed to load harness memory", e);
+  }
+}
+
+async function loadHarnessRecentTrace() {
+  const container = $("harness-trace-view");
+  if (!container) return;
+  try {
+    const res = await fetch("/api/sessions");
+    const data = await res.json().catch(() => ({}));
+    const sessions = data.sessions || [];
+    let targetJob = null;
+    for (const s of sessions) {
+      if (s.content && s.content.agent_receipt) {
+        targetJob = s;
+        break;
+      }
+    }
+    if (!targetJob && sessions.length) targetJob = sessions[0];
+    if (!targetJob) {
+      container.innerHTML = `<div class="admin-empty">No pipeline runs recorded yet. Generate a video in Studio to see agent execution traces.</div>`;
+      return;
+    }
+
+    const trRes = await fetch(`/api/jobs/${targetJob.id}/agent-trace`);
+    const trData = await trRes.json().catch(() => ({}));
+    const traces = trData.traces || [];
+    const receipt = trData.receipt || {};
+
+    if (!traces.length) {
+      container.innerHTML = `<div class="admin-empty">Job ${escapeHtml(targetJob.id)} has no recorded agent traces. Run a generation with Agent Harness active.</div>`;
+      return;
+    }
+
+    const stepsHtml = traces.map((step) => {
+      const isOk = step.status === "success";
+      const argsStr = JSON.stringify(step.args || {}, null, 1);
+      const resStr = JSON.stringify(step.result || {}, null, 1);
+      return `
+        <div class="harness-trace-item">
+          <div class="harness-trace-head">
+            <span class="harness-trace-turn">Turn ${step.turn || 1} · Action: <strong class="harness-trace-tool">${escapeHtml(step.tool)}</strong></span>
+            <span class="harness-trace-ms">${step.elapsed_ms || 0}ms · <span class="pill ${isOk ? "approved" : "revoked"}">${escapeHtml(step.status)}</span></span>
+          </div>
+          <div class="harness-trace-thought"><i data-lucide="message-square"></i> Thought: "${escapeHtml(step.thought || "")}"</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+            <div>
+              <div style="font-size:11px; font-weight:700; margin-bottom:2px; color:hsl(var(--muted-foreground));">Tool Inputs</div>
+              <pre class="harness-trace-box">${escapeHtml(argsStr)}</pre>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:700; margin-bottom:2px; color:hsl(var(--muted-foreground));">Observation Result</div>
+              <pre class="harness-trace-box">${escapeHtml(resStr)}</pre>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div style="margin-bottom:12px; padding:10px 12px; border-radius:8px; background:hsl(var(--muted)/.4); display:flex; justify-content:space-between; align-items:center;">
+        <div><strong>Job Trace:</strong> ${escapeHtml(targetJob.filename || targetJob.id)} (${receipt.total_turns || traces.length} turns)</div>
+        <div style="font-size:12px; color:hsl(var(--muted-foreground));">Tools used: ${(receipt.tools_used || []).join(", ")}</div>
+      </div>
+      ${stepsHtml}
+    `;
+    icons();
+  } catch (e) {
+    container.innerHTML = `<div class="admin-empty">Failed to load execution traces: ${escapeHtml(e.message)}</div>`;
+  }
 }
 
 // -------------------------------------------------------- publish: social ----

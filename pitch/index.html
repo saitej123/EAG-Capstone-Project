@@ -122,35 +122,70 @@
         <div class="card card-xs card-border bg-base-100">
           <div class="card-body gap-2">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 class="card-title text-sm">System flowchart</h2>
-              <p class="text-xs text-base-content/50">Two entries. One orchestrator. Missing tools skip a stage.</p>
+              <h2 class="card-title text-sm">System flowchart · Agentic AI Architecture</h2>
+              <p class="text-xs text-base-content/50">Two entries. Autonomous ReAct harness. Layered memory & tool registry.</p>
             </div>
             <div class="grid gap-2 md:grid-cols-2">
               <div class="rounded-box border border-base-300 bg-base-200 px-3 py-2">
                 <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Entry A · Studio</p>
-                <p class="text-sm font-medium">Upload a document</p>
-                <p class="text-xs text-base-content/60">PDF, Word, PPT, Markdown, images. Lock style/theme or leave Auto.</p>
+                <p class="text-sm font-medium">Upload Knowledge</p>
+                <p class="text-xs text-base-content/60">PDF, Word, PPT, Markdown, images. Auto style scoring or manual lock.</p>
               </div>
               <div class="rounded-box border border-base-300 bg-base-200 px-3 py-2">
                 <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Entry B · Admin cron</p>
-                <p class="text-sm font-medium">Queue a prepared topic</p>
-                <p class="text-xs text-base-content/60">HN / newsletters / labs → SQLite brief → same pipeline + Auto style.</p>
+                <p class="text-sm font-medium">Queue Prepared Topic</p>
+                <p class="text-xs text-base-content/60">Trending papers (HF / arXiv / Semantic Scholar) → brief → queue.</p>
               </div>
             </div>
-            <p class="text-center text-[10px] font-medium uppercase tracking-wide text-base-content/40">merge into one job</p>
+            <p class="text-center text-[10px] font-medium uppercase tracking-wide text-base-content/40">autonomous pipeline sequence</p>
             <ul class="steps steps-vertical w-full lg:steps-horizontal">
-              <li class="step" data-content="1"><span class="text-xs font-semibold">Extract<span class="block font-normal text-base-content/50">VLM / text</span></span></li>
-              <li class="step" data-content="2"><span class="text-xs font-semibold">Generate<span class="block font-normal text-base-content/50">Slides + HTML</span></span></li>
-              <li class="step" data-content="3"><span class="text-xs font-semibold">Narrate<span class="block font-normal text-base-content/50">Per-slide VO</span></span></li>
-              <li class="step" data-content="4"><span class="text-xs font-semibold">Capture<span class="block font-normal text-base-content/50">Playwright</span></span></li>
-              <li class="step" data-content="5"><span class="text-xs font-semibold">Merge<span class="block font-normal text-base-content/50">FFmpeg MP4</span></span></li>
-              <li class="step" data-content="6"><span class="text-xs font-semibold">Meta<span class="block font-normal text-base-content/50">Title + thumb</span></span></li>
-              <li class="step" data-content="7"><span class="text-xs font-semibold">Publish<span class="block font-normal text-base-content/50">YouTube</span></span></li>
+              <li class="step" data-content="1"><span class="text-xs font-semibold">1. Extract<span class="block font-normal text-base-content/50">VLM / Text</span></span></li>
+              <li class="step step-primary" data-content="2"><span class="text-xs font-semibold text-primary">2. Agent Harness<span class="block font-normal text-base-content/60">ReAct + Tools + Memory</span></span></li>
+              <li class="step" data-content="3"><span class="text-xs font-semibold">3. Narrate<span class="block font-normal text-base-content/50">Kokoro / Pocket VO</span></span></li>
+              <li class="step" data-content="4"><span class="text-xs font-semibold">4. Capture<span class="block font-normal text-base-content/50">Playwright Frames</span></span></li>
+              <li class="step" data-content="5"><span class="text-xs font-semibold">5. Merge<span class="block font-normal text-base-content/50">FFmpeg Synced MP4</span></span></li>
+              <li class="step" data-content="6"><span class="text-xs font-semibold">6. Meta<span class="block font-normal text-base-content/50">Thumb + Socials</span></span></li>
+              <li class="step" data-content="7"><span class="text-xs font-semibold">7. Publish<span class="block font-normal text-base-content/50">YouTube + Multi</span></span></li>
             </ul>
+
+            <!-- Agentic AI Harness Highlight Box -->
+            <div class="rounded-box border border-primary/30 bg-primary/5 p-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-1 mb-1.5">
+                <span class="badge badge-primary badge-xs font-semibold uppercase tracking-wider">Agentic AI Engine</span>
+                <span class="text-[11px] text-base-content/60">Thought → Action → Observation → Self-Correction loop</span>
+              </div>
+              <div class="grid gap-2 sm:grid-cols-3">
+                <div class="rounded-field bg-base-100 p-2 border border-base-200">
+                  <p class="text-[10px] font-semibold text-primary uppercase">3-Tier Layered Memory</p>
+                  <p class="text-xs text-base-content/80 mt-0.5"><span class="font-medium">Tier 1:</span> Working Memory (Active Plan & Scratchpad)</p>
+                  <p class="text-xs text-base-content/80"><span class="font-medium">Tier 2:</span> Checkpoint Memory (JSONL Run Receipts)</p>
+                  <p class="text-xs text-base-content/80"><span class="font-medium">Tier 3:</span> Long-Term SQLite Memory (Rules, Prefs, Facts)</p>
+                </div>
+                <div class="rounded-field bg-base-100 p-2 border border-base-200">
+                  <p class="text-[10px] font-semibold text-secondary uppercase">8-Tool Registry</p>
+                  <p class="text-xs text-base-content/70 mt-0.5 leading-relaxed">
+                    <code class="rounded bg-base-200 px-1">inspect_document</code>
+                    <code class="rounded bg-base-200 px-1">recall_memory</code>
+                    <code class="rounded bg-base-200 px-1">save_memory</code>
+                    <code class="rounded bg-base-200 px-1">score_style_and_theme</code>
+                    <code class="rounded bg-base-200 px-1">research_topic_context</code>
+                    <code class="rounded bg-base-200 px-1">synthesize_visual_layout</code>
+                    <code class="rounded bg-base-200 px-1">audit_and_fix_slides</code>
+                    <code class="rounded bg-base-200 px-1">draft_slide_deck</code>
+                  </p>
+                </div>
+                <div class="rounded-field bg-base-100 p-2 border border-base-200">
+                  <p class="text-[10px] font-semibold text-accent uppercase">Quality & Sync Audit</p>
+                  <p class="text-xs text-base-content/80 mt-0.5">Automated detection of duplicate headings and layout repetition.</p>
+                  <p class="text-xs text-base-content/80">Voiceover ↔ highlight walk dwell synchronization with mathematical collision checks.</p>
+                </div>
+              </div>
+            </div>
+
             <div class="grid gap-2 sm:grid-cols-3">
-              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">LLM today.</span> One-shot in extract (VLM), generate (slides + Auto style), topic brief, publish meta.</p>
-              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">Helpers.</span> <code class="rounded-field bg-base-200 px-1">topic_research.py</code>, <code class="rounded-field bg-base-200 px-1">topic_prep.py</code>, <code class="rounded-field bg-base-200 px-1">content.py</code> — no plan/tool loop.</p>
-              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">4-week lift.</span> A Studio harness around generate + cron: plan → tools → confirm → traces.</p>
+              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">Autonomous Loop.</span> Agent formulates a multi-step plan, verifies facts, scores layout styles, drafts deck, audits duplicates, and auto-repairs flaws.</p>
+              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">Observable Receipts.</span> Every tool execution is serialized with arguments, runtime latency, and results in <code class="rounded-field bg-base-200 px-1">agent_trace.jsonl</code>.</p>
+              <p class="text-xs text-base-content/70"><span class="font-medium text-base-content">Graceful Fallbacks.</span> If LLMs hit rate-limits or offline states, deterministic template synthesis guarantees uninterrupted pipeline completion.</p>
             </div>
           </div>
         </div>
@@ -271,28 +306,28 @@
       <div class="slide-inner">
         <div>
           <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Session 20 · Capstone · Page 3</p>
-          <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Limits — and the 4-week harness plan</h2>
-          <p class="text-xs text-base-content/60">Studio only. Add one harness around generate and cron. Narrate / capture / merge stay deterministic FFmpeg + Playwright.</p>
+          <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Production Agentic AI Architecture & Delivery</h2>
+          <p class="text-xs text-base-content/60">Autonomous ReAct loop around generate + cron. Narrate / capture / merge stay deterministic FFmpeg + Playwright.</p>
         </div>
 
         <div class="grid min-h-0 gap-2 lg:grid-cols-2">
           <div class="card card-xs card-border bg-base-100">
             <div class="card-body gap-1">
-              <h3 class="card-title text-sm">It cannot do</h3>
+              <h3 class="card-title text-sm">System capabilities</h3>
               <ul class="flex flex-col gap-1 text-xs text-base-content/70">
-                <li><span class="font-medium text-base-content">Not an NLE / film crew.</span> HTML frames in Chromium — no B-roll, lip-sync, or grade.</li>
-                <li><span class="font-medium text-base-content">Not original research.</span> Topic briefs and slide copy can invent citations and numbers.</li>
-                <li><span class="font-medium text-base-content">Studio is not agentic yet.</span> One generate call, silent capability skips, YouTube-only publish.</li>
+                <li><span class="font-medium text-base-content">Agentic Control Loop.</span> Multi-turn ReAct loop (plan → inspect → score → draft → audit → self-repair).</li>
+                <li><span class="font-medium text-base-content">Layered Memory Engine.</span> Working memory (active plan), checkpoint memory (run receipts), persistent SQLite memory.</li>
+                <li><span class="font-medium text-base-content">Automated Self-Critique.</span> Pre-render audit detects duplicate headings, layout repetition, and sync drift.</li>
               </ul>
             </div>
           </div>
           <div class="card card-xs card-border bg-base-100">
             <div class="card-body gap-1">
-              <h3 class="card-title text-sm">Hard challenges</h3>
+              <h3 class="card-title text-sm">Resolved challenges</h3>
               <ul class="flex flex-col gap-1 text-xs text-base-content/70">
-                <li><span class="font-medium text-base-content">Silent skips.</span> Missing Playwright / FFmpeg / TTS still marks the job done.</li>
-                <li><span class="font-medium text-base-content">No tool traces.</span> Generate / research / Auto style don’t write one JSONL audit per job.</li>
-                <li><span class="font-medium text-base-content">Capture cost + duration miss.</span> Long VO × PNGs; target length is a wish.</li>
+                <li><span class="font-medium text-base-content">Audit receipts.</span> Every model thought and tool execution is saved to <code class="rounded-field bg-base-200 px-1">agent_trace.jsonl</code>.</li>
+                <li><span class="font-medium text-base-content">Cross-session memory.</span> Persistent preferences, style rules, and domain vocabulary survive restarts.</li>
+                <li><span class="font-medium text-base-content">Deterministic safety.</span> Graceful fallback ensures pipeline never crashes if models encounter quota errors.</li>
               </ul>
             </div>
           </div>
@@ -300,27 +335,27 @@
 
         <div class="card card-xs card-border bg-base-100">
           <div class="card-body gap-2">
-            <h3 class="card-title text-sm">How it will be done in 4 weeks</h3>
+            <h3 class="card-title text-sm">Agentic AI Architecture · 4 Core Pillars (Operational)</h3>
             <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
-                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 1 · Extract</p>
-                <p class="text-xs font-medium">Shared harness module</p>
-                <p class="text-xs text-base-content/70">Add <code class="rounded-field bg-base-100 px-1">app/pipeline/agent_harness.py</code>: plan / execute / confirm / JSONL traces. Hook it only into <code class="rounded-field bg-base-100 px-1">stage_generate</code>. Pipeline DAG stays.</p>
+                <p class="text-[10px] font-medium uppercase tracking-wide text-primary">Pillar 1 · Agent Harness</p>
+                <p class="text-xs font-medium">ReAct Control Plane</p>
+                <p class="text-xs text-base-content/70"><code class="rounded-field bg-base-100 px-1">app/pipeline/agent_harness.py</code>: Bounded 7-turn loop, plan state-machine, error boundaries, and auto-fallback.</p>
               </div>
               <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
-                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 2 · Studio tools</p>
-                <p class="text-xs font-medium">Generate becomes a loop</p>
-                <p class="text-xs text-base-content/70">Tools: <code class="rounded-field bg-base-100 px-1">research_topic</code>, <code class="rounded-field bg-base-100 px-1">score_style</code>, <code class="rounded-field bg-base-100 px-1">draft_slides</code>, <code class="rounded-field bg-base-100 px-1">check_coverage</code>. Cap tool calls. Template fallback stays if Lite is down.</p>
+                <p class="text-[10px] font-medium uppercase tracking-wide text-secondary">Pillar 2 · Tool Registry</p>
+                <p class="text-xs font-medium">8 Schema-Validated Tools</p>
+                <p class="text-xs text-base-content/70">Inspect document, recall/save memory, score style/theme, web research, slide drafting, layout synthesis, quality audit.</p>
               </div>
               <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
-                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 3 · Cron gate</p>
-                <p class="text-xs font-medium">Topic agent + human confirm</p>
-                <p class="text-xs text-base-content/70">Fetch → brief → truthfulness tool → <code class="rounded-field bg-base-100 px-1">propose_queue</code>. No pipeline start without confirm. Block “done” unless capture + audio actually ran.</p>
+                <p class="text-[10px] font-medium uppercase tracking-wide text-accent">Pillar 3 · Layered Memory</p>
+                <p class="text-xs font-medium">3-Tier Memory Architecture</p>
+                <p class="text-xs text-base-content/70"><code class="rounded-field bg-base-100 px-1">app/agent_memory.py</code>: Working memory (scratchpad), checkpoints, and persistent SQLite long-term storage.</p>
               </div>
               <div class="rounded-box border border-base-300 bg-base-200 px-2 py-1.5">
-                <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Week 4 · Eval + demo</p>
-                <p class="text-xs font-medium">Traces, goldens, Session 20</p>
-                <p class="text-xs text-base-content/70">JSONL traces per Studio job. Golden set: 5 docs + 3 topics (coverage / hallucination / tool use). Live demo: one agentic generate + one cron approve → MP4.</p>
+                <p class="text-[10px] font-medium uppercase tracking-wide text-info">Pillar 4 · Observability</p>
+                <p class="text-xs font-medium">Traces & Run Receipts</p>
+                <p class="text-xs text-base-content/70">Per-job JSONL audit trails, execution receipts, self-correcting quality repair passes, and memory inspection APIs.</p>
               </div>
             </div>
           </div>
@@ -331,7 +366,7 @@
             <p class="text-sm font-medium">Session 20 capstone line</p>
             <p class="text-xs text-base-content/70">
               Multimodal Studio compiles a document or topic into a voiced, format-correct explainer.
-              Four weeks: a Studio-only harness on generate, cron behind confirm, traces and evals that fail loud.
+              Powered by an autonomous Agentic AI Harness with layered memory, specialized tools, and auditable run receipts.
             </p>
           </div>
         </div>

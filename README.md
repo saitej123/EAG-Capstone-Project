@@ -11,6 +11,9 @@
 
 <p align="center">
   <a href="#how-to-use">How to use</a> ·
+  <a href="#agentic-ai-architecture--flowchart">Agentic AI & Flowchart</a> ·
+  <a href="#agent-harness-screenshots--dashboard">Harness UI</a> ·
+  <a href="#real-world-scenarios--sample-artifacts">Scenarios & Samples</a> ·
   <a href="#what-it-can-do">What it can do</a> ·
   <a href="#run-it">Run it</a> ·
   <a href="#configure">Configure</a> ·
@@ -79,6 +82,185 @@
     </td>
   </tr>
 </table>
+
+---
+
+## Agentic AI Architecture & Flowchart
+
+Multimodal Studio operates with a production **Agentic AI Harness** (`app/pipeline/agent_harness.py`) combining a bounded **ReAct Control Loop (Thought → Action → Observation → Self-Correction)**, an explicit **8-Tool Registry**, and a **Three-Tier Layered Memory Architecture** (`app/agent_memory.py`).
+
+### System Flowchart
+
+```mermaid
+flowchart TD
+    subgraph Inputs["1. Knowledge Ingestion"]
+        Doc["Document Upload<br/>(PDF, Word, PPT, TXT, Images)"]
+        Cron["Admin Cron Topics<br/>(Trending Papers, News, Labs)"]
+    end
+
+    subgraph ExtractStage["2. Extraction & Analysis"]
+        VLM["VLM & Text Extraction<br/>(Gemini / Ollama / OpenAI / PyMuPDF)"]
+        Analysis["Document Analysis & Tone Classifier<br/>(Equations, Formulas, Complexity)"]
+    end
+
+    subgraph AgentHarness["3. Agentic AI Harness (ReAct Loop)"]
+        direction TB
+        subgraph MemoryTiers["Layered Memory Architecture"]
+            WM["Tier 1: Working Memory<br/>(Active Plan Checklist & Scratchpad)"]
+            CM["Tier 2: Checkpoint Memory<br/>(Turn Receipts & JSONL Audit)"]
+            LTM["Tier 3: Long-Term Memory (SQLite)<br/>(Preferences, Style Rules, Domain Facts)"]
+        end
+
+        subgraph ToolRegistry["Typed 8-Tool Registry"]
+            T1["inspect_document"]
+            T2["recall_memory"]
+            T3["save_memory"]
+            T4["score_style_and_theme"]
+            T5["research_topic_context"]
+            T6["synthesize_visual_layout"]
+            T7["audit_and_fix_slides"]
+            T8["draft_slide_deck"]
+        end
+
+        ReAct["Autonomous ReAct Controller<br/>Thought ➔ Tool Action ➔ Observation ➔ Self-Correction"]
+        Audit["Quality & Sync Audit Pass<br/>(Duplicate Detection & Dwell Sync)"]
+    end
+
+    subgraph VideoPipeline["4. Deterministic Media Synthesis"]
+        Narrate["Voiceover Synthesis<br/>(Kokoro / Pocket / Voice Clones)"]
+        Capture["Frame-Seeking Capture<br/>(Playwright Headless Chromium)"]
+        Merge["Audio-Video Merge<br/>(FFmpeg Synced MP4)"]
+        Publish["Publish Pack & Multi-Platform<br/>(YouTube, Instagram, LinkedIn, TikTok)"]
+    end
+
+    Doc --> VLM
+    Cron --> VLM
+    VLM --> Analysis
+    Analysis --> ReAct
+
+    ReAct <--> MemoryTiers
+    ReAct <--> ToolRegistry
+    ReAct --> Audit
+    Audit --> ReAct
+    ReAct -->|Final Deck + Receipt| Narrate
+
+    Narrate --> Capture
+    Capture --> Merge
+    Merge --> Publish
+```
+
+### Layered Memory & Tool Implementation
+
+| Layer / Tool | Purpose & Engineering Standard |
+| --- | --- |
+| **Tier 1: Working Memory** | Ephemeral per-session state tracking the active goal, dynamic plan checklist (`[✓] inspect`, `[✓] recall`, `[✓] draft`), and observation buffer. |
+| **Tier 2: Checkpoint Memory** | Episodic trace capturing every thought, tool name, argument payload, execution latency, and error state. Persisted to `agent_trace.jsonl`. |
+| **Tier 3: Long-Term Memory** | SQLite database (`workspace/agent_memory.db`) with WAL mode storing persistent user preferences, document-to-style heuristics, and learned review feedback. |
+| **Tool: `inspect_document`** | Deeply inspects document structure, volume, detected mathematical equations, and statistics. |
+| **Tool: `recall_memory`** | Queries long-term memory via token and tag matching for audience rules and visual pacing. |
+| **Tool: `save_memory`** | Persists run takeaways and user feedback into long-term memory for cross-session adaptation. |
+| **Tool: `score_style_and_theme`** | Evaluates document tone against target audience to score layout styles and color palettes. |
+| **Tool: `research_topic_context`** | Grounds concepts with live web research for verified facts and citations. |
+| **Tool: `synthesize_visual_layout`** | Invokes `layout_engine` to compute data-fit cell coordinates and verify collision-free geometry. |
+| **Tool: `audit_and_fix_slides`** | Deterministically reviews slides for duplicate headings, visual repetition, and voice-sync drift, triggering automated repair passes. |
+| **Tool: `draft_slide_deck`** | Synthesizes structured slide deck JSON adhering to strict formatting constraints and word budgets. |
+
+### Agent Harness Screenshots & Dashboard
+
+<p align="center">
+  <img src="docs/screenshots/harness-flowchart.png" alt="Agentic AI Architecture Flowchart" width="100%">
+</p>
+<p align="center"><sub><strong>Architecture Flowchart</strong> — Ingestion ➔ VLM Extract ➔ ReAct Agent Harness (3 Memory Tiers + 8 Tool Registry) ➔ Deterministic Media Synthesis (TTS, Playwright, FFmpeg).</sub></p>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/agent-harness-dashboard.png" alt="Agent Harness Dashboard & Memory Explorer">
+      <br><sub><strong>Agent Harness &amp; Memory Explorer</strong> — 4 architecture gauges, namespace filter, and live SQLite memory store with search.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/agent-tools-catalog.png" alt="8-Tool Registry Catalog">
+      <br><sub><strong>8-Tool Registry</strong> — Schema-validated domain tools with parameter typing and sandboxed dispatch.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img src="docs/screenshots/agent-trace-run.png" alt="Turn-by-turn ReAct Execution Trace">
+      <br><sub><strong>Turn-by-Turn ReAct Trace</strong> — Inspects document, recalls persistent rules, scores styles, drafts slides, and executes automated self-repair.</sub>
+    </td>
+  </tr>
+</table>
+
+### Real-World Scenarios & Sample Artifacts
+
+#### Scenario 1: AI & Machine Learning Research Paper (ArXiv / HuggingFace)
+* **Input Knowledge:** Research PDF on Transformer architecture with attention equations, projection matrices ($W_q, W_k, W_v$), and BLEU score benchmarks.
+* **Agent Harness Loop:**
+  1. `inspect_document`: Flags academic paper with LaTeX equations and benchmark comparisons.
+  2. `recall_memory`: Pulls `style_rules:ml_paper` guideline: *Highlight mathematical formulas, benchmark stats, and core architecture components.*
+  3. `score_style_and_theme`: Recommends `teardown` style with `cyber` theme (dark glass, cyan accent, KaTeX formula formatting).
+  4. `draft_slide_deck`: Generates multi-beat explainer with embedded LaTeX formulas:
+     $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+  5. `audit_and_fix_slides`: Validates KaTeX syntax and confirms no duplicate headings.
+  6. `save_memory`: Records session takeaways and citation tags to persistent memory.
+
+```json
+{
+  "heading": "Scaled Dot-Product Attention",
+  "layout": "bullets",
+  "equations": ["\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V"],
+  "bullets": [
+    "Queries and keys of dimension d_k are multiplied",
+    "Softmax assigns weights to all value vectors",
+    "Multi-head projection runs h attention layers in parallel"
+  ],
+  "narration": "Rather than calculating a single attention pass, queries, keys, and values are linearly projected into lower-dimensional spaces, allowing the model to attend to information at different representation subspaces simultaneously."
+}
+```
+
+#### Scenario 2: Strategic Executive Brief & Financial Metrics
+* **Input Knowledge:** Executive quarterly review with ARR numbers, churn reduction, and strategic priorities.
+* **Agent Harness Loop:**
+  1. `inspect_document`: Identifies business memo with critical percentages and currency values.
+  2. `recall_memory`: Pulls `style_rules:executive_summary`: *Lead with key business metrics and high-level decision pillars.*
+  3. `score_style_and_theme`: Selects `minimal` style with `editorial` palette and weighted layout geometry.
+  4. `synthesize_visual_layout`: Evaluates `weights: [100, 45, 30]` and builds a squarified treemap where retention dominates the visual field.
+
+```json
+{
+  "heading": "Q3 Growth & Retention Drivers",
+  "layout": "bullets",
+  "weights": [100, 45, 30],
+  "bullets": [
+    "Enterprise net revenue retention reached 134%",
+    "Self-serve customer acquisition cost dropped 22%",
+    "Product-led onboarding reduced time-to-value to 4 days"
+  ],
+  "narration": "Our enterprise retention was the primary revenue engine this quarter, while self-serve acquisition efficiency gave us positive unit economics across all cohorts."
+}
+```
+
+#### Scenario 3: Systems Engineering & Cloud Migration Walkthrough
+* **Input Knowledge:** Engineering runbook detailing containerized microservice migration to Kubernetes.
+* **Agent Harness Loop:**
+  1. `inspect_document`: Recognizes technical documentation with step-by-step sequential dependencies.
+  2. `recall_memory`: Fetches `style_rules:how_to_tutorial`: *Use ordered milestones with clear step numbers and actionable instructions.*
+  3. `score_style_and_theme`: Assigns `blueprint` style with `path` / `cascade` layout geometry.
+  4. `audit_and_fix_slides`: Verifies voiceover dwell time so complex technical steps match narration pacing without speech rushing.
+
+```json
+{
+  "heading": "Zero-Downtime Cluster Migration",
+  "layout": "steps",
+  "steps": [
+    "Provision multi-region control planes",
+    "Mirror database traffic with dual writes",
+    "Deploy blue-green ingress routing",
+    "Cut over DNS and decommission legacy VMs"
+  ],
+  "narration": "We begin by provisioning independent control planes, mirror real-time database transactions, switch ingress traffic through blue-green proxies, and finalize DNS cutover with zero downtime."
+}
+```
 
 ---
 

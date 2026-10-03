@@ -97,8 +97,52 @@ def check_templates() -> None:
     print(f"[ok] render: {len(VIDEO_STYLES)} templates rendered without error")
 
 
+def check_agent_harness() -> None:
+    from app.agent_memory import CheckpointMemory, HarnessMemory, WorkingMemory
+    from app.pipeline.agent_harness import AgentHarness
+
+    # Test working memory
+    wm = WorkingMemory("chk_job", "verify harness")
+    wm.add_plan_step("s1", "inspect")
+    wm.update_plan_step("s1", "completed", "done")
+    assert "[✓] s1: inspect -> done" in wm.get_plan_summary()
+
+    # Test checkpoint memory
+    cm = CheckpointMemory("chk_job")
+    cm.record_turn(1, "test thought", "tool_x", {"a": 1}, {"res": 2}, status="success", elapsed_ms=5.0)
+    receipt = cm.get_receipt()
+    assert receipt["total_turns"] == 1
+    assert receipt["tools_used"] == ["tool_x"]
+
+    # Test long term memory in a temp db
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+        mem = HarnessMemory(db_path=Path(tmp.name))
+        assert mem.count() >= 5
+        mem.store("user_pref", {"style": "neon"}, namespace="preferences", tags="style,neon")
+        recalled = mem.recall("neon style", namespace="preferences")
+        assert len(recalled) >= 1
+        assert recalled[0]["key"] == "user_pref"
+
+    # Test harness tool execution
+    harness = AgentHarness("chk_job", options={"video_style": "auto"})
+    tools = {t["name"] for t in harness.tools.get_catalog()}
+    assert "inspect_document" in tools
+    assert "synthesize_visual_layout" in tools
+    assert "audit_and_fix_slides" in tools
+
+    res_lx = harness.tools.execute(
+        "synthesize_visual_layout", items=["alpha", "beta", "gamma"], vertical=False, seed="test"
+    )
+    assert res_lx.success is True
+    assert res_lx.data["fits"] is True
+
+    print("[ok] agent harness: working memory, checkpoints, persistent memory, and tools verified")
+
+
 if __name__ == "__main__":
     check_edges()
+    check_agent_harness()
     check_geometry()
     check_deck_uniqueness()
     check_templates()

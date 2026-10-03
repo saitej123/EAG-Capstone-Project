@@ -2058,6 +2058,103 @@ def get_job(job_id: str, request: Request) -> dict:
     return store.snapshot(job)
 
 
+@app.get("/api/jobs/{job_id}/agent-trace")
+def get_job_agent_trace(job_id: str, request: Request) -> dict:
+    """Return the step-by-step agentic execution trace and run receipt."""
+    job = _job_for_user(request, job_id)
+    receipt = job.content.get("agent_receipt") or {}
+    from .workspace_store import resolve_job_dir
+
+    work = resolve_job_dir(job_id, create=False)
+    trace_path = work / "agent_trace.jsonl"
+    lines = []
+    if trace_path.exists():
+        try:
+            lines = [
+                json.loads(line)
+                for line in trace_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        except Exception:
+            pass
+    return {
+        "job_id": job_id,
+        "receipt": receipt,
+        "traces": lines or receipt.get("steps", []),
+    }
+
+
+class AgentMemoryPost(BaseModel):
+    key: str
+    value: Any
+    namespace: str = "general"
+    tags: str = ""
+
+
+@app.get("/api/agent/memory")
+def get_agent_memory(request: Request, query: str = "", namespace: str = "") -> dict:
+    """Inspect or search the persistent agent harness memory."""
+    user = require_user(request)
+    from .agent_memory import get_harness_memory
+
+    mem = get_harness_memory()
+    if query:
+        items = mem.recall(query, namespace=namespace or None, limit=10)
+    else:
+        items = []
+        for ns in mem.list_namespaces():
+            items.extend(mem.recall("", namespace=ns, limit=5))
+    return {
+        "count": mem.count(),
+        "namespaces": mem.list_namespaces(),
+        "items": items,
+    }
+
+
+@app.post("/api/agent/memory")
+def post_agent_memory(req: AgentMemoryPost, request: Request) -> dict:
+    """Store or update a learned preference, style rule, or domain fact in agent memory."""
+    user = require_user(request)
+    from .agent_memory import get_harness_memory
+
+    mem = get_harness_memory()
+    mem.store(key=req.key, value=req.value, namespace=req.namespace, tags=req.tags)
+    return {"status": "ok", "key": req.key, "namespace": req.namespace}
+
+
+class RunToolRequest(BaseModel):
+    tool_name: str
+    args: dict[str, Any] = {}
+
+
+@app.get("/api/agent/tools")
+def get_agent_tools(request: Request) -> dict:
+    """Return the registered tools catalog and schema in the Agent Harness."""
+    user = require_user(request)
+    from .agent_memory import get_harness_memory
+    from .pipeline.agent_harness import AgentHarness
+
+    harness = AgentHarness(session_id="catalog_inspector")
+    mem = get_harness_memory()
+    return {
+        "tools": harness.tools.get_catalog(),
+        "max_turns": harness.max_turns,
+        "memory_count": mem.count(),
+        "memory_namespaces": mem.list_namespaces(),
+    }
+
+
+@app.post("/api/agent/run-tool")
+def run_agent_tool(req: RunToolRequest, request: Request) -> dict:
+    """Execute a single harness tool on demand with parameter validation."""
+    user = require_user(request)
+    from .pipeline.agent_harness import AgentHarness
+
+    harness = AgentHarness(session_id=f"tool_exec_{int(time.time())}")
+    res = harness.tools.execute(req.tool_name, **req.args)
+    return res.to_dict()
+
+
 @app.delete("/api/jobs/{job_id}")
 def delete_job(job_id: str, request: Request) -> dict:
     """Remove a session from history and delete its workspace folder."""
