@@ -147,6 +147,40 @@ def _retain_cover_for_html(work: Path) -> None:
         pass
 
 
+def _preserve_slide_previews(work: Path, job: "Job") -> list[str]:
+    """Keep one settled PNG per slide in ``slides_preview/`` after cleanup.
+
+    Lets Studio's Slides gallery and Instagram Carousel work even after heavy
+    per-frame capture artifacts (``shots/``) are cleaned up.
+    """
+    dst = work / "slides_preview"
+    existing = sorted(dst.glob("slide_*.png")) if dst.is_dir() else []
+    if not existing:
+        shots = work / "shots"
+        candidates: list[Path] = []
+        if shots.is_dir():
+            for d in sorted(shots.glob("slide_*")):
+                if d.is_dir():
+                    for cand in (d / "settled.png", d / "frame_00000.png"):
+                        if cand.is_file():
+                            candidates.append(cand)
+                            break
+            if not candidates:
+                candidates = sorted(shots.glob("slide_*.png"))
+        if not candidates and (work / "pages_shots").is_dir():
+            candidates = sorted((work / "pages_shots").glob("*.png"))
+        if candidates:
+            dst.mkdir(parents=True, exist_ok=True)
+            for idx, src in enumerate(candidates):
+                target = dst / f"slide_{idx:03d}.png"
+                try:
+                    shutil.copyfile(src, target)
+                    existing.append(target)
+                except OSError:
+                    pass
+    return [f"/files/{job.id}/slides_preview/{p.name}" for p in existing]
+
+
 def cleanup_job_temps(work: Path, job: "Job") -> list[str]:
     """Delete intermediate capture / preview files; keep finals only."""
     removed: list[str] = []
@@ -155,6 +189,7 @@ def cleanup_job_temps(work: Path, job: "Job") -> list[str]:
         return removed
 
     _retain_cover_for_html(work)
+    preserved_previews = _preserve_slide_previews(work, job)
 
     for name in list(_TEMP_NAMES):
         p = work / name
@@ -175,13 +210,19 @@ def cleanup_job_temps(work: Path, job: "Job") -> list[str]:
             shutil.rmtree(p, ignore_errors=True)
             removed.append(sub + "/")
 
-    # Clear preview artifact pointers so UI doesn't 404.
+    # Clear raw preview pointers; keep lightweight slides_preview URLs if created.
     arts = job.artifacts or {}
     changed = False
-    for key in ("pages", "pages_shots", "audio"):
+    for key in ("pages", "audio"):
         if key in arts:
             arts.pop(key, None)
             changed = True
+    if preserved_previews:
+        arts["pages_shots"] = preserved_previews
+        changed = True
+    elif "pages_shots" in arts:
+        arts.pop("pages_shots", None)
+        changed = True
     if changed:
         job.artifacts = arts
 

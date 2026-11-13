@@ -5,20 +5,73 @@
 <h1 align="center">Multimodal Studio</h1>
 
 <p align="center">
-  <strong>Turn any document into a narrated, publish-ready video.</strong><br>
-  Drop a paper, notes, or slides → pick a platform → get a slideshow with voiceover, then post it.
+  <strong>Turn any paper, document, notes, or slides into a narrated, animated, publish-ready MP4 video.</strong><br>
+  Powered by an autonomous ReAct Agentic AI Harness, 3-tier layered memory, data-fit slide geometry synthesis, Kokoro / Pocket neural TTS, Playwright 2K frame capture, FFmpeg assembly, and multi-platform social packs.
+</p>
+
+<p align="center">
+  <a href="https://macharlasaiteja--multimodal-studio-web.us-east.modal.run"><strong>Live App (Modal)</strong></a> ·
+  <a href="https://macharlasaiteja--multimodal-studio-web.us-east.modal.run/demo.mp4"><strong>Video Walkthrough (MP4)</strong></a> ·
+  <a href="https://github.com/saitej123/EAG-Capstone-Project"><strong>GitHub Repo</strong></a> ·
+  <a href="#test-login--live-deployment">Test Login</a> ·
+  <a href="#what-still-does-not-work--known-limitations">Known Limitations</a> ·
+  <a href="#agentic-ai-architecture--flowchart">Agentic AI &amp; Flowchart</a>
 </p>
 
 <p align="center">
   <a href="#how-to-use">How to use</a> ·
-  <a href="#agentic-ai-architecture--flowchart">Agentic AI & Flowchart</a> ·
   <a href="#agent-harness-screenshots--dashboard">Harness UI</a> ·
-  <a href="#real-world-scenarios--sample-artifacts">Scenarios & Samples</a> ·
+  <a href="#real-world-scenarios--sample-artifacts">Scenarios &amp; Samples</a> ·
   <a href="#what-it-can-do">What it can do</a> ·
   <a href="#run-it">Run it</a> ·
   <a href="#configure">Configure</a> ·
   <a href="#how-a-slide-fits-its-content">Slide layouts</a>
 </p>
+
+---
+
+## Test Login & Live Deployment
+
+| Item | Details |
+| --- | --- |
+| **Live URL (Modal Space: `macharlasaiteja`)** | [`https://macharlasaiteja--multimodal-studio-web.us-east.modal.run`](https://macharlasaiteja--multimodal-studio-web.us-east.modal.run) |
+| **Modal Dashboard** | [`modal.com/apps/macharlasaiteja/main/deployed/multimodal-studio`](https://modal.com/apps/macharlasaiteja/main/deployed/multimodal-studio) |
+| **Test Login (Standard User)** | Username / Email: `testuser` (`testuser@multimodalstudio.ai`) · Password: `testuser` |
+| **Video Walkthrough Recording** | [`https://macharlasaiteja--multimodal-studio-web.us-east.modal.run/demo.mp4`](https://macharlasaiteja--multimodal-studio-web.us-east.modal.run/demo.mp4) *(2m 04s Kokoro-narrated investor pitch &amp; live Attention Is All You Need walkthrough)* · Repo file: [`docs/demo/multimodal-studio-demo.mp4`](docs/demo/multimodal-studio-demo.mp4) |
+| **Repository** | [`github.com/saitej123/EAG-Capstone-Project`](https://github.com/saitej123/EAG-Capstone-Project) |
+
+> **Cold-start note:** The Modal container scales down after 5 minutes of inactivity. The first request after idle takes ~15–25s while Kokoro &amp; Pocket TTS warm up.
+
+### Repository Commits (`master`)
+
+| Commit | Message | Link |
+| --- | --- | --- |
+| `64022dd` | `harness addition` | [`64022dd`](https://github.com/saitej123/EAG-Capstone-Project/commit/64022ddbf22bb84fd76f95fca7974025ff817cf2) |
+| `1479f21` | `new templates` | [`1479f21`](https://github.com/saitej123/EAG-Capstone-Project/commit/1479f21ed9dca0daa3a5bcc2bb49865320150f53) |
+| `17d7705` | `slide fix` | [`17d7705`](https://github.com/saitej123/EAG-Capstone-Project/commit/17d77055fc39a9adeb9e4a02ee9d82660695444a) |
+| `9885227` | `init` | [`9885227`](https://github.com/saitej123/EAG-Capstone-Project/commit/988522791479f4975ccadff889707092c2949d61) |
+
+### What the Project Does
+
+**Multimodal Studio** compiles raw knowledge (research PDFs like *Attention Is All You Need*, Word docs, PowerPoint decks, Markdown notes, or images) into synced, narrated videos:
+
+1. **VLM + Text Ingestion:** Renders document pages and extracts structured concepts, equations, and benchmarks via Gemini Vision (or OpenAI / Ollama locally) with PyMuPDF fallback.
+2. **Agentic AI Harness (`app/pipeline/agent_harness.py`):** Runs a bounded ReAct loop (`inspect_document` → `recall_memory` → `score_style_and_theme` → `draft_slide_deck` → `audit_and_fix_slides` → `save_memory`) backed by 3-tier SQLite/JSONL memory.
+3. **Data-Fit Layout Engine (`app/layout_engine.py`):** Computes collision-free slide geometry per slide (treemap, orbit, cascade, masonry, path, golden split, bands, scatter, slices, skyline) sized from item count, text length, and importance `weights`.
+4. **Kokoro &amp; Pocket Neural TTS (`app/pipeline/tts.py`):** Synthesizes per-slide voiceovers (Kokoro `af_heart` default, Kyutai Pocket TTS, or Supertonic voice clones) and fits audio pacing to target length.
+5. **Deterministic 2K Capture &amp; FFmpeg Merge (`app/pipeline/capture_worker.py`, `media.py`):** Seek-captures CSS/SVG/KaTeX frame animations in headless Chromium synchronized to narration dwell, then merges synced H.264 MP4 output.
+6. **Thumbnail &amp; Multi-Platform Publish Pack (`app/pipeline/thumbnail.py`, `social_post.py`):** Generates a Nano Banana Pro thumbnail (`gemini-3-pro-image`) and reuses that thumbnail + slide carousel across YouTube, Instagram, Twitter/X, LinkedIn, TikTok, Substack, and Medium.
+
+---
+
+## What Still Does Not Work / Known Limitations
+
+- **TikTok, Substack, and Medium have no direct API auto-publish:** Studio generates tailored captions, hashtags, and full Markdown articles for copy/download, while direct API upload is only wired for YouTube, Instagram, X, and LinkedIn.
+- **One-click social posting requires external OAuth credentials:** On the hosted Modal instance (`youtube: false`), social posting is disabled until platform OAuth tokens / `client_secrets.json` are configured in **Admin → Social** (and `PUBLIC_BASE_URL` is set for Instagram Graph API fetches).
+- **Local Ollama &amp; CUA desktop automation are unavailable on Modal:** Headless Modal containers do not run a local Ollama server or desktop GUI, so cloud inference relies on `GEMINI_API_KEY` (or `OPENAI_API_KEY`) and skips `cua` / `cua-agent`.
+- **Local diffusion image models &amp; experimental in-slide AI images are disabled:** Thumbnails use cloud Gemini Nano Banana Pro (`gemini-3-pro-image`); local diffusion weights are not installed and `SLIDE_AI_IMAGES_DEFAULT=false`.
+- **Hosted `testuser` is non-admin:** `testuser` can run the full Studio pipeline, preview/select Kokoro &amp; Pocket voices, generate thumbnails/carousels, use History and Image Lab, and inspect job traces via `/api/jobs/{id}/agent-trace`, but Admin panels (`Users`, `Invites`, `Cron`, `Costs`, `Agent Harness` admin explorer) are restricted to admin accounts.
+- **Background paper cron scheduler is off in cloud web mode:** `AUTO_ENABLED=false` is forced in `modal_app.py` so serverless web containers only execute on-demand user jobs.
 
 <p align="center">
   <img src="docs/screenshots/studio.png" alt="Studio — upload knowledge, pick a format, run the pipeline" width="100%">
@@ -71,6 +124,36 @@
 <p align="center"><sub>Admin (sign-in as admin): Users, Invites, Color palette, Visual styles (one frame per layout family), Social, Cron jobs, Costs.</sub></p>
 
 <table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/slides-gallery.png" alt="Rendered Slides Gallery & Content Review">
+      <br><sub><strong>Content Review &amp; Slides Gallery</strong> — Automated duplicate &amp; voice-sync check alongside all 6 rendered slides for <em>Attention Is All You Need</em>.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/publish-and-thumbnail.png" alt="YouTube Publish & Nano Banana Pro Thumbnail">
+      <br><sub><strong>YouTube Publish &amp; Thumbnail</strong> — Auto-generated title, description, tags, readiness checklist, and Nano Banana Pro thumbnail.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/social-instagram.png" alt="Instagram Carousel & Thumbnail Reuse">
+      <br><sub><strong>Instagram Carousel &amp; Cover</strong> — Reuses the generated thumbnail as cover preview and converts captured slides into square carousel images.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/social-linkedin.png" alt="LinkedIn Video & Thumbnail Reuse">
+      <br><sub><strong>LinkedIn &amp; Multi-Platform Reuse</strong> — Attaches the same thumbnail and video across LinkedIn, Twitter/X, TikTok, Substack, and Medium.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/chitti-assistant.png" alt="C.H.I.T.T.I. Voice & Command Assistant">
+      <br><sub><strong>C.H.I.T.T.I. Assistant</strong> — In-app voice &amp; command assistant for creating videos, attaching documents, and checking status.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/admin-costs.png" alt="Admin Cost Tracker">
+      <br><sub><strong>Admin Cost Tracker</strong> — Token &amp; dollar accounting across Gemini / OpenAI / Live models by model, job, and day.</sub>
+    </td>
+  </tr>
   <tr>
     <td width="50%">
       <img src="docs/screenshots/history.png" alt="History tab">

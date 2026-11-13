@@ -363,8 +363,8 @@
                   </div>
                   <div class="voice-now-copy">
                     <div class="voice-now-kicker">Now narrating with</div>
-                    <div class="voice-now-name" id="voice-now-name">Jane</div>
-                    <div class="voice-now-sub" id="voice-now-sub">Pocket · Clear · conversation</div>                  </div>
+                    <div class="voice-now-name" id="voice-now-name">Heart</div>
+                    <div class="voice-now-sub" id="voice-now-sub">Kokoro · Warm · clear default</div>                  </div>
                   <button type="button" class="btn-sm accent voice-now-preview" id="voice-preview-btn">
                     <i data-lucide="play"></i> Preview
                   </button>
@@ -374,18 +374,18 @@
                 <p class="voice-preview-note">Sample: &ldquo;Hello! This is a quick sample of how this voice will sound…&rdquo;</p>
 
                 <nav class="voice-engine-tabs" id="voice-engine-tabs" role="tablist" aria-label="TTS engine">
-                  <button type="button" class="voice-engine-tab active" data-engine="pocket" role="tab" aria-selected="true" aria-controls="voice-pane-pocket" id="voice-tab-pocket">
-                    <i data-lucide="audio-lines"></i> Pocket
-                  </button>
-                  <button type="button" class="voice-engine-tab" data-engine="kokoro" role="tab" aria-selected="false" aria-controls="voice-pane-kokoro" id="voice-tab-kokoro">
+                  <button type="button" class="voice-engine-tab active" data-engine="kokoro" role="tab" aria-selected="true" aria-controls="voice-pane-kokoro" id="voice-tab-kokoro">
                     <i data-lucide="sparkles"></i> Kokoro
+                  </button>
+                  <button type="button" class="voice-engine-tab" data-engine="pocket" role="tab" aria-selected="false" aria-controls="voice-pane-pocket" id="voice-tab-pocket">
+                    <i data-lucide="audio-lines"></i> Pocket
                   </button>
                   <button type="button" class="voice-engine-tab" data-engine="clones" role="tab" aria-selected="false" aria-controls="voice-pane-clones" id="voice-tab-clones">
                     <i data-lucide="user-round"></i> Clones
                   </button>
                 </nav>
 
-                <div class="voice-engine-pane" id="voice-pane-pocket" data-engine-pane="pocket" role="tabpanel" aria-labelledby="voice-tab-pocket">
+                <div class="voice-engine-pane hidden" id="voice-pane-pocket" data-engine-pane="pocket" role="tabpanel" aria-labelledby="voice-tab-pocket">
                   <div class="voice-engine-bar" id="voice-engine-bar-pocket">
                     <div class="voice-engine-label"><i data-lucide="audio-lines"></i> Kyutai Pocket TTS</div>
                     <div class="voice-engine-detail" id="voice-pocket-detail">CPU neural TTS with catalog voices + wav cloning. Install: pip install pocket-tts</div>
@@ -428,7 +428,7 @@
                   </details>
                 </div>
 
-                <div class="voice-engine-pane hidden" id="voice-pane-kokoro" data-engine-pane="kokoro" role="tabpanel" aria-labelledby="voice-tab-kokoro">
+                <div class="voice-engine-pane" id="voice-pane-kokoro" data-engine-pane="kokoro" role="tabpanel" aria-labelledby="voice-tab-kokoro">
                   <div class="voice-engine-bar" id="voice-engine-bar-kokoro">
                     <div class="voice-engine-label"><i data-lucide="sparkles"></i> Built-in Kokoro TTS</div>
                     <div class="voice-engine-detail">Pick a preset voice below. Filter by gender, then preview before running the pipeline.</div>

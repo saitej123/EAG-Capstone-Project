@@ -377,12 +377,38 @@ class AgentHarness:
         )
         res = self.tools.execute(tool_name, **tool_args)
         status = "success" if res.success else "error"
+
+        # Compact trace payloads: never retain full slide arrays / raw doc blobs
+        # inside CheckpointMemory (avoids giant JSONL traces & circular refs).
+        safe_args: dict[str, Any] = {}
+        for k, v in (tool_args or {}).items():
+            if k == "text" and isinstance(v, str):
+                safe_args[k] = f"<{len(v)} chars>"
+            elif k == "slides" and isinstance(v, list):
+                safe_args[k] = f"<{len(v)} slides>"
+            elif isinstance(v, (str, int, float, bool)) or v is None:
+                safe_args[k] = v
+            elif isinstance(v, dict):
+                safe_args[k] = {sk: sv for sk, sv in list(v.items())[:6] if isinstance(sv, (str, int, float, bool))}
+            else:
+                safe_args[k] = f"<{type(v).__name__}>"
+
+        safe_res = res.to_dict()
+        if isinstance(res.data, dict) and "model" in res.data:
+            m = res.data.get("model") or {}
+            safe_res["data"] = {
+                "success": bool(res.data.get("success", True)),
+                "fallback": bool(res.data.get("fallback", False)),
+                "title": m.get("title", ""),
+                "slide_count": len(m.get("slides") or []),
+            }
+
         self.checkpoint_memory.record_turn(
             turn=turn,
             thought=thought,
             tool=tool_name,
-            args=tool_args,
-            result=res.to_dict(),
+            args=safe_args,
+            result=safe_res,
             status=status,
             elapsed_ms=res.elapsed_ms,
         )
@@ -505,13 +531,16 @@ class AgentHarness:
             t6_thought = f"Repair {issue_count} detected slide issues (e.g. duplicate headings or visuals)."
             # Apply automatic repairs on duplicate headings
             fixed_slides = []
-            seen_headings = set()
-            for i, sl in enumerate(slides):
+            seen_counts: dict[str, int] = {}
+            for sl in slides:
                 sl_copy = dict(sl)
                 h = sl_copy.get("heading", "").strip()
-                if h in seen_headings:
-                    sl_copy["heading"] = f"{h} (Part 2)"
-                seen_headings.add(h)
+                key = h.lower()
+                if key:
+                    cnt = seen_counts.get(key, 0) + 1
+                    seen_counts[key] = cnt
+                    if cnt > 1:
+                        sl_copy["heading"] = f"{h} (Part {cnt})"
                 fixed_slides.append(sl_copy)
             model["slides"] = fixed_slides
             self.execute_turn(

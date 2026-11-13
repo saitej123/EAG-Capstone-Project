@@ -17,6 +17,7 @@ import re
 import shutil
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from fastapi import (
     FastAPI,
@@ -145,6 +146,8 @@ def _hydrate_sessions() -> None:
     store.hydrate()
     # Ensure the default admin exists so invites can be approved from day one.
     auth.seed_admin()
+    # Ensure the non-admin demo test login exists when enabled.
+    auth.seed_demo_user()
     # Apply admin runtime overrides (LLM provider / models / image backend).
     from . import runtime_settings as runtime_settings_mod
 
@@ -242,7 +245,7 @@ PUBLIC_PREFIXES = (
     "/docs", "/openapi.json", "/redoc",
 )
 PUBLIC_EXACT = {
-    "/login", "/api/ui-palette", "/api/capabilities",
+    "/login", "/demo.mp4", "/api/ui-palette", "/api/capabilities",
     "/api/video-formats", "/api/audience",
 }
 
@@ -1887,7 +1890,7 @@ async def create_job(
     enable_web_research: str = Form("false"),
     slide_ai_images: str = Form("false"),
     voice_preset: str = Form(""),
-    pocket_voice: str = Form("jane"),
+    pocket_voice: str = Form(""),
     voice_id: str = Form(""),
     age_group: str = Form("auto"),
     knowledge_level: str = Form("auto"),
@@ -1922,16 +1925,15 @@ async def create_job(
     voice_opts: dict = {}
     preset = voice_preset.strip()
     pocket = pocket_voice.strip()
-    # Studio default: Pocket Jane when no other voice is chosen — only if Pocket works.
+    # Studio default: Kokoro when no other voice is chosen (fall back to Pocket).
     if not pocket and not preset and not voice_id.strip() and not (
         voice_style is not None and (voice_style.filename or "")
     ):
-        if tts_mod.pocket_available():
+        if tts_mod.kokoro_available():
+            preset = (get_settings().kokoro_voice or "af_heart").strip() or "af_heart"
+        elif tts_mod.pocket_available():
             pocket = (get_settings().pocket_tts_default_voice or "jane").strip() or "jane"
-        else:
-            pocket = ""
     if pocket and not tts_mod.pocket_available():
-        # Don't fail the whole upload when Form default is jane but Pocket isn't installed.
         log.bind(task="job").warning(
             f"Pocket TTS unavailable; ignoring pocket_voice={pocket}"
         )
@@ -1940,11 +1942,10 @@ async def create_job(
         if preset not in tts_mod.kokoro_preset_ids():
             raise HTTPException(400, f"Unknown Kokoro voice preset: {preset}")
         voice_opts["voice_preset"] = preset
-    if pocket:
+    elif pocket:
         if pocket not in tts_mod.pocket_preset_ids():
             raise HTTPException(400, f"Unknown Pocket voice: {pocket}")
         voice_opts["pocket_voice"] = pocket
-        voice_opts.pop("voice_preset", None)
 
     # Validate optional voice inputs before creating a job record.
     if voice_style is not None and (voice_style.filename or ""):
@@ -2150,7 +2151,7 @@ def run_agent_tool(req: RunToolRequest, request: Request) -> dict:
     user = require_user(request)
     from .pipeline.agent_harness import AgentHarness
 
-    harness = AgentHarness(session_id=f"tool_exec_{int(time.time())}")
+    harness = AgentHarness(session_id=f"tool_exec_{int(_time.time())}")
     res = harness.tools.execute(req.tool_name, **req.args)
     return res.to_dict()
 
@@ -2707,6 +2708,18 @@ def favicon():
             headers={"Cache-Control": "public, max-age=86400"},
         )
     raise HTTPException(404, "favicon not found")
+
+
+@app.api_route("/demo.mp4", methods=["GET", "HEAD"], include_in_schema=False)
+def demo_video():
+    demo = BASE_DIR / "docs" / "demo" / "multimodal-studio-demo.mp4"
+    if demo.is_file():
+        return FileResponse(
+            demo,
+            media_type="video/mp4",
+            headers={"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=3600"},
+        )
+    raise HTTPException(404, "Demo recording not found")
 
 
 def _bust_static_html(html: str) -> str:

@@ -246,8 +246,9 @@ def stage_generate(job: Job) -> None:
             raw_text, html_path, job.options, cover_image=cover_image
         )
         store.set_artifact(job, "html", f"/files/{job.id}/presentation.html")
-        if model.get("agent_receipt"):
-            store.set_content(job, "agent_receipt", model["agent_receipt"])
+        agent_receipt = model.pop("agent_receipt", None)
+        if agent_receipt:
+            store.set_content(job, "agent_receipt", agent_receipt)
             trace_file = work / "agent_trace.jsonl"
             if trace_file.exists():
                 store.set_artifact(job, "agent_trace", f"/files/{job.id}/agent_trace.jsonl")
@@ -857,15 +858,25 @@ def stage_publish_meta(job: Job) -> None:
         else:
             meta_msg = "Kept existing title/description."
 
+        # Auto-generate thumbnail when enabled and not already present.
+        thumb_msg = ""
+        if get_settings().generate_thumbnail and not job.content.get("thumbnail"):
+            try:
+                ok_t, t_msg = _generate_job_thumbnail_inner(job)
+                if ok_t:
+                    thumb_msg = t_msg or "Thumbnail ready."
+            except Exception as te:  # noqa: BLE001
+                log.bind(task="publish-meta").warning(f"auto thumbnail soft-failed: {te}")
+
         # Social / blog tabs (IG, X, LinkedIn, TikTok, Substack, Medium) stay
         # empty until the user clicks Generate on that tab — they reuse this
         # job's narration + any already-saved social_metadata as context.
 
         store.set_content(
             job, "publish_meta_message",
-            f"{meta_msg} Social tabs: generate per platform when ready. Thumbnail: click Generate when ready.".strip(),
+            f"{meta_msg} {thumb_msg} Social tabs: generate per platform when ready.".strip(),
         )
-        detail = f"Metadata ready ({spec['label']}; thumbnail on demand)"
+        detail = f"Metadata ready ({spec['label']}" + ("; thumbnail ready)" if job.content.get("thumbnail") else "; thumbnail on demand)")
         store.set_stage(job, "publish_meta", StageStatus.DONE, detail)
         log.bind(task="publish-meta").success(detail)
         # Auto-post to platforms that have credentials + auto_post enabled.

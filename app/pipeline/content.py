@@ -1727,9 +1727,8 @@ def build_slide_model(
             work_dir = Path(opts["work_dir"]) if opts.get("work_dir") else None
             harness = AgentHarness(session_id=session_id, options=opts, work_dir=work_dir)
             model, used_llm, receipt = harness.run(raw_text, cover_image)
-            opts["agent_receipt"] = receipt
-            model["agent_receipt"] = receipt
             model = _enforce_word_budget(model, opts)
+            model["agent_receipt"] = receipt
             log.bind(task="generate").success(
                 f"Agent Harness completed {len(receipt.get('steps', []))} turns: {len(model.get('slides', []))} slides "
                 f"(style: {opts.get('video_style', 'n/a')}, theme: {opts.get('video_theme', 'n/a')})"
@@ -4449,7 +4448,7 @@ _SLIDESHOW_TEMPLATE = """<!DOCTYPE html>
     if (!targets) return;
     targets.forEach((t) => applyPose(t, frame));
     // Ambient drift on hero/background scenes: slow, subtle, seek-safe.
-    const amb = slide.querySelector('.scene .drift, .bg-orb');
+    const amb = slide.querySelector('.scene .drift, .bg-orb, .motif');
     if (amb && totalFrames) {{
       const phase = (frame / totalFrames) * Math.PI * 2;
       amb.style.transform = `translate(${{Math.sin(phase) * 18}}px, ${{Math.cos(phase) * 14}}px)`;

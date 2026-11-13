@@ -128,13 +128,18 @@ class Settings(BaseSettings):
         n = int(self.llm_max_parallel or 0)
         return n if n > 0 else 4
 
-    # --- Authentication (invite-only) ---
+    # --- Authentication (invite-only + optional demo login) ---
     # Bootstrap admin is controlled by AUTH_ADMIN_* in .env (synced on startup).
     # Registration is invite-only: visitors request an invite, an admin approves
     # it from the dashboard, and only then can that email set a password.
     auth_admin_email: str = "macharlasaiteja@gmail.com"
     auth_admin_username: str = "admin"
     auth_admin_password: str = "saiteja"
+    # Optional non-admin test/reviewer login seeded on startup when enabled.
+    auth_demo_enabled: bool = True
+    auth_demo_email: str = "testuser@multimodalstudio.ai"
+    auth_demo_username: str = "testuser"
+    auth_demo_password: str = "testuser"
     # Secret used to sign session cookies. Change in production via .env.
     auth_secret_key: str = "change-me-multimodal-studio-secret"
     # Session lifetime in hours (only when AUTH_SESSION_PERSISTENT=true).

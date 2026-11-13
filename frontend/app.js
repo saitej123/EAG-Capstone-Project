@@ -17,12 +17,12 @@ let topicPlanData = null;
 let topicSelected = new Set();
 
 let selectedVoiceId = null; // id of a saved library voice applied to the whole video
-let selectedVoicePreset = null; // Kokoro preset when Kokoro engine is selected
-let selectedPocketVoice = "jane"; // Pocket catalog id (default: Jane)
+let selectedVoicePreset = "af_heart"; // Kokoro preset (default: Heart)
+let selectedPocketVoice = null; // Pocket catalog id when Pocket engine is selected
 let voicePresets = [];
 let pocketPresets = [];
 let pocketAvailable = false;
-let voiceEngine = "pocket"; // pocket | kokoro | clones — Pocket is tab 1
+let voiceEngine = "kokoro"; // kokoro | pocket | clones — Kokoro is tab 1 (default)
 let voiceFilter = "all"; // all | female | male (Kokoro gender filter)
 let pocketFilter = "all";
 try {
@@ -3010,21 +3010,21 @@ async function loadVoices() {
     pocketPresets = [];
   }
   _restoreVoiceSel();
-  // No saved selection → Pocket · Jane (server default).
+  // No saved selection → Kokoro · Heart (default).
   if (!selectedVoiceId && !selectedPocketVoice && !selectedVoicePreset) {
-    selectedPocketVoice = defaultPocket || "jane";
-    selectedVoicePreset = null;
-    voiceEngine = "pocket";
+    selectedVoicePreset = defaultPreset || "af_heart";
+    selectedPocketVoice = null;
+    voiceEngine = "kokoro";
     _saveVoiceSel();
-  } else if (!selectedVoiceId && selectedPocketVoice && !selectedVoicePreset && !_loadVoiceSel()) {
+  } else if (!selectedVoiceId && selectedVoicePreset && !selectedPocketVoice && !_loadVoiceSel()) {
     // Init default with no localStorage yet — persist + align to server default.
-    selectedPocketVoice = defaultPocket || "jane";
-    voiceEngine = "pocket";
+    selectedVoicePreset = defaultPreset || "af_heart";
+    voiceEngine = "kokoro";
     _saveVoiceSel();
   }
   // Align preset fallback if somehow only kokoro selected without id
   if (!selectedVoiceId && !selectedPocketVoice && selectedVoicePreset === null) {
-    selectedVoicePreset = defaultPreset;
+    selectedVoicePreset = defaultPreset || "af_heart";
   }
   sanitizeNarrationVoice();
   renderVoices();
@@ -8324,7 +8324,40 @@ function renderSocial(job) {
   if (job && job.content && job.content.ig_carousel) {
     renderIgCarousel(job.content.ig_carousel);
   }
-  SOCIAL_PLATFORMS.filter((p) => p !== "youtube").forEach(fillSocialPane);
+  const thumbUrl = job && job.artifacts && job.artifacts.thumbnail ? bust(job.artifacts.thumbnail) : "";
+  const videoUrl = job && job.artifacts && job.artifacts.video_final ? bust(job.artifacts.video_final) : "";
+  const roleHint = {
+    instagram: "Attached as Reel cover & Image post preview",
+    x: "Attached as Media card / Video poster on X",
+    linkedin: "Attached as Video cover / Link preview card",
+    tiktok: "Attached as TikTok video cover frame",
+    substack: "Attached as Newsletter hero header image",
+    medium: "Attached as Medium article cover image",
+  };
+  SOCIAL_PLATFORMS.filter((p) => p !== "youtube").forEach((plat) => {
+    fillSocialPane(plat);
+    const pane = document.getElementById(`social-pane-${plat}`);
+    const panel = pane && pane.querySelector(`.social-panel[data-platform="${plat}"]`);
+    if (!panel) return;
+    let strip = panel.querySelector(".social-thumb-attach");
+    if (!thumbUrl) {
+      if (strip) strip.remove();
+      return;
+    }
+    if (!strip) {
+      strip = document.createElement("div");
+      strip.className = "social-thumb-attach";
+      panel.insertBefore(strip, panel.firstChild);
+    }
+    const mediaBadge = videoUrl ? "Video + Thumbnail ready" : "Thumbnail attached";
+    strip.innerHTML = `
+      <img src="${thumbUrl}" alt="${escapeHtml(plat)} thumbnail preview" />
+      <div class="social-thumb-meta">
+        <span class="social-thumb-badge">${mediaBadge}</span>
+        <span class="social-thumb-note">${escapeHtml(roleHint[plat] || "Reused from job thumbnail")}</span>
+      </div>
+    `;
+  });
   updateYtChecklist();
   renderSocialReadyBar();
   return false;

@@ -214,6 +214,43 @@ def seed_admin() -> None:
         _seeded = True
 
 
+def seed_demo_user() -> None:
+    """Create / sync a non-admin test account when ``AUTH_DEMO_ENABLED`` is true."""
+    s = get_settings()
+    if not s.auth_demo_enabled:
+        return
+    email = (s.auth_demo_email or "").strip().lower()
+    username = (s.auth_demo_username or "demo").strip() or "demo"
+    password = s.auth_demo_password or ""
+    if not email or not password:
+        return
+    _ensure_schema()
+    pw_hash = hash_password(password)
+    conn = _connect()
+    with _lock:
+        row = conn.execute(
+            "SELECT id, username, password_hash, role FROM users WHERE email = ?",
+            (email,),
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO users (id, email, username, password_hash, role, created_at) "
+                "VALUES (?, ?, ?, ?, 'user', ?)",
+                (secrets.token_hex(8), email, username, pw_hash, time.time()),
+            )
+            conn.commit()
+            log.bind(task="auth").info(f"seeded demo user {email}")
+        else:
+            pw_changed = not verify_password(password, row["password_hash"] or "")
+            if (row["username"] or "") != username or pw_changed:
+                conn.execute(
+                    "UPDATE users SET username = ?, password_hash = ? WHERE email = ?",
+                    (username, pw_hash, email),
+                )
+                conn.execute("DELETE FROM auth_sessions WHERE user_id = ?", (row["id"],))
+                conn.commit()
+
+
 # --------------------------------------------------------------------- users --
 
 @dataclass

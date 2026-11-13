@@ -39,9 +39,10 @@ def _work_paths(job) -> tuple[Path, Path | None, Path | None, list[Path]]:
     thumb_path = thumb if thumb.exists() else None
 
     slides: list[Path] = []
+    slides_prev = work / "slides_preview"
     shots = work / "pages_shots"
     pages = work / "pages"
-    for folder in (shots, pages):
+    for folder in (slides_prev, shots, pages):
         if folder.is_dir():
             for p in sorted(folder.glob("*.png")) + sorted(folder.glob("*.jpg")):
                 slides.append(p)

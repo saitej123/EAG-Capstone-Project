@@ -937,7 +937,8 @@ LX_CSS = r"""
   .lx-line { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
   .lx-line path { fill:none; stroke:color-mix(in srgb, var(--a) 62%, transparent); stroke-width:2.5; stroke-linecap:round; vector-effect:non-scaling-stroke; }
   .lx-dot { position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; background:var(--a); box-shadow:0 0 0 6px color-mix(in srgb, var(--a) 24%, transparent), 0 0 24px color-mix(in srgb, var(--glow) 70%, transparent); }
-  .lx-c.is-active { z-index:5; scale:1.03; border-color:color-mix(in srgb, var(--a) 78%, transparent); box-shadow:0 0 0 2px color-mix(in srgb, var(--a) 55%, transparent), 0 18px 46px color-mix(in srgb, var(--glow) 34%, transparent); }
+  .lx-c.is-active { z-index:5; scale:1.035; border-color:color-mix(in srgb, var(--a) 84%, transparent); box-shadow:0 0 0 2px color-mix(in srgb, var(--a) 62%, transparent), 0 20px 52px color-mix(in srgb, var(--glow) 42%, transparent); }
+  .lx-c.is-dim { opacity:0.42; filter:saturate(0.66); scale:0.985; }
   .lx-c.is-lead .lx-t { font-weight:750; }
 
   /* treemap: tiled slabs, lead cell dominant */
